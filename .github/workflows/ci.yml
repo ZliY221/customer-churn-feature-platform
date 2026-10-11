@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   test:
-    name: Contract and generator tests
+    name: Contract, feature, and generator tests
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -41,5 +41,13 @@ jobs:
           --days 60
           --seed 2027
           --output build/customer_events.ndjson
+      - name: Build point-in-time feature snapshot
+        env:
+          PYTHONPATH: src
+        run: >-
+          python -m churn_platform.feature_cli
+          --input data/sample/customer_events.ndjson
+          --output build/customer_features.ndjson
+          --as-of-time 2026-01-31T00:00:00Z
       - name: Audit tracked publication content
         run: python scripts/audit-publication.py

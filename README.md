@@ -8,8 +8,8 @@
 - [x] 实现固定种子的匿名行为事件生成器。
 - [x] 实现无第三方依赖的事件校验器。
 - [x] 验证事件确定性、唯一性、时间边界、金额口径与隐私字段。
-- [ ] 构建带 `as_of_time` 的离线特征快照。
-- [ ] 定义未来 30 天流失标签并加入泄漏检查。
+- [x] 构建带 `as_of_time` 的离线特征快照。
+- [x] 定义未来 30 天流失标签并加入泄漏检查。
 - [ ] 实现按时间切分的训练、验证和测试数据集。
 - [ ] 训练基线模型并输出分类评估与校准报告。
 - [ ] 保存实验清单、数据指纹与模型哈希。
@@ -33,6 +33,11 @@ python -m churn_platform.cli `
   --days 60 `
   --seed 2027 `
   --output build/events/customer_events.ndjson
+
+python -m churn_platform.feature_cli `
+  --input data/sample/customer_events.ndjson `
+  --output build/features/customer_features.ndjson `
+  --as-of-time 2026-01-31T00:00:00Z
 ```
 
 运行测试：
@@ -44,7 +49,7 @@ python -m unittest discover -s tests -v
 
 ## 设计边界
 
-当前版本只完成事件数据基础，不包含模型效果、线上服务或生产吞吐结论。后续版本将按照 [架构设计](docs/architecture.md) 逐步增加特征、训练、推理和监控能力，每项能力均配套自动化测试和机器可读证据。
+当前版本完成事件数据基础、时间点特征快照和未来流失标签，不包含模型效果、线上服务或生产吞吐结论。特征严格读取截止时间及之前的数据，标签只读取未来 30 天窗口；自动化测试会验证未来事件不能改变特征列。后续版本将按照 [架构设计](docs/architecture.md) 增加时间切分、训练、推理和监控能力。
 
 ## 文档
 
