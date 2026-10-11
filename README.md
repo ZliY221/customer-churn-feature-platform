@@ -2,6 +2,8 @@
 
 本项目实现从匿名行为事件、时间点特征快照、模型训练与评估，到批量推理、查询服务和漂移监控的完整机器学习数据链路。设计重点是防止标签泄漏、保证训练可复现，并让数据版本、模型版本和预测结果能够追溯。
 
+当前版本：`v0.5.0`。版本变更见 [CHANGELOG](CHANGELOG.md)。
+
 ## 当前进度
 
 - [x] 定义客户行为事件 v1 契约。
@@ -15,7 +17,7 @@
 - [x] 保存特征清单、训练数据指纹、标准化参数和模型权重。
 - [x] 实现带模型与数据血缘的幂等批量推理。
 - [ ] 实现 FastAPI 预测查询服务。
-- [ ] 实现数据漂移与预测漂移报告。
+- [x] 实现带输入血缘、PSI 和稳定告警编号的数据漂移与预测漂移报告。
 
 ## 事件模型
 
@@ -52,6 +54,14 @@ python -m churn_platform.inference_cli `
   --model build/model/baseline.json `
   --output build/predictions/churn.ndjson `
   --manifest-output build/predictions/manifest.json
+
+python -m churn_platform.drift_cli `
+  --reference-features build/reference/features.ndjson `
+  --candidate-features build/candidate/features.ndjson `
+  --reference-predictions build/reference/predictions.ndjson `
+  --candidate-predictions build/candidate/predictions.ndjson `
+  --policy config/drift-policy.json `
+  --output build/drift/report.json
 ```
 
 运行测试：
@@ -65,7 +75,10 @@ python -m unittest discover -s tests -v
 
 当前版本完成事件数据基础、时间点特征快照、未来流失标签、按时间切分的逻辑回归基线和幂等批量推理。分类阈值只在验证集选择，测试集仅做最终评估；预测记录使用模型哈希、客户键和快照时间生成稳定 ID，清单保存输入、模型和输出 SHA-256。仓库中的自动化测试数据用于验证实现，不作为业务模型效果声明。
 
+漂移报告按特征输出 PSI，并检查平均预测概率和正例率变化。报告只保存聚合结果和规范化输入指纹；漂移告警不等同于模型效果衰减结论。
+
 ## 文档
 
 - [需求与验收标准](docs/requirements.md)
 - [架构设计](docs/architecture.md)
+- [特征与预测漂移监控](docs/drift-monitoring.md)
