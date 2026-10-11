@@ -2,7 +2,7 @@
 
 本项目实现从匿名行为事件、时间点特征快照、模型训练与评估，到批量推理、查询服务和漂移监控的完整机器学习数据链路。设计重点是防止标签泄漏、保证训练可复现，并让数据版本、模型版本和预测结果能够追溯。
 
-当前版本：`v0.5.0`。版本变更见 [CHANGELOG](CHANGELOG.md)。
+当前版本：`v0.5.1`。版本变更见 [CHANGELOG](CHANGELOG.md)。
 
 ## 当前进度
 
@@ -30,45 +30,19 @@
 要求 Python 3.11 或更高版本。
 
 ```powershell
-$env:PYTHONPATH = "src"
-python -m churn_platform.cli `
-  --customers 100 `
-  --days 60 `
-  --seed 2027 `
-  --output build/events/customer_events.ndjson
-
-python -m churn_platform.feature_cli `
-  --input data/sample/customer_events.ndjson `
-  --output build/features/customer_features.ndjson `
-  --as-of-time 2026-01-31T00:00:00Z
-
-python -m churn_platform.training_cli `
-  --input build/features/training_snapshots.ndjson `
-  --train-end 2026-03-31T00:00:00Z `
-  --validation-end 2026-04-30T00:00:00Z `
-  --model-output build/model/baseline.json `
-  --metrics-output build/model/metrics.json
-
-python -m churn_platform.inference_cli `
-  --input build/features/inference_snapshot.ndjson `
-  --model build/model/baseline.json `
-  --output build/predictions/churn.ndjson `
-  --manifest-output build/predictions/manifest.json
-
-python -m churn_platform.drift_cli `
-  --reference-features build/reference/features.ndjson `
-  --candidate-features build/candidate/features.ndjson `
-  --reference-predictions build/reference/predictions.ndjson `
-  --candidate-predictions build/candidate/predictions.ndjson `
-  --policy config/drift-policy.json `
-  --output build/drift/report.json
+python -m venv .venv
+./.venv/Scripts/python.exe -m pip install -e .
+./.venv/Scripts/run-churn-demo.exe --output-dir build/demo
 ```
+
+该命令从固定种子的匿名事件开始，依次生成六个时间点特征快照，完成时间切分训练、两批推理与漂移报告。入口正常结束后会生成 `build/demo/summary.json`；模型指标、预测清单、输入指纹和漂移明细保存在同一目录下。漂移状态可能为 `ALERT`，表示候选批次触发策略阈值，不代表演示流程执行失败。
+
+各阶段也可通过安装后生成的 `generate-customer-events`、`build-customer-features`、`train-churn-baseline`、`predict-customer-churn` 和 `monitor-churn-drift` 命令独立运行。
 
 运行测试：
 
 ```powershell
-$env:PYTHONPATH = "src"
-python -m unittest discover -s tests -v
+./.venv/Scripts/python.exe -m unittest discover -s tests -v
 ```
 
 ## 设计边界
