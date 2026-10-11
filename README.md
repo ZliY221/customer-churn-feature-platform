@@ -2,7 +2,7 @@
 
 本项目实现从匿名行为事件、时间点特征快照、模型训练与评估，到批量推理、查询服务和漂移监控的完整机器学习数据链路。设计重点是防止标签泄漏、保证训练可复现，并让数据版本、模型版本和预测结果能够追溯。
 
-当前版本：`v0.5.1`。版本变更见 [CHANGELOG](CHANGELOG.md)。
+当前版本：`v0.6.0`。版本变更见 [CHANGELOG](CHANGELOG.md)。
 
 ## 当前进度
 
@@ -16,7 +16,7 @@
 - [x] 训练确定性逻辑回归基线并输出分类评估与校准指标。
 - [x] 保存特征清单、训练数据指纹、标准化参数和模型权重。
 - [x] 实现带模型与数据血缘的幂等批量推理。
-- [ ] 实现 FastAPI 预测查询服务。
+- [x] 实现 FastAPI 预测查询服务。
 - [x] 实现带输入血缘、PSI 和稳定告警编号的数据漂移与预测漂移报告。
 
 ## 事件模型
@@ -31,13 +31,21 @@
 
 ```powershell
 python -m venv .venv
-./.venv/Scripts/python.exe -m pip install -e .
+./.venv/Scripts/python.exe -m pip install -e ".[api,test]"
 ./.venv/Scripts/run-churn-demo.exe --output-dir build/demo
 ```
 
 该命令从固定种子的匿名事件开始，依次生成六个时间点特征快照，完成时间切分训练、两批推理与漂移报告。入口正常结束后会生成 `build/demo/summary.json`；模型指标、预测清单、输入指纹和漂移明细保存在同一目录下。漂移状态可能为 `ALERT`，表示候选批次触发策略阈值，不代表演示流程执行失败。
 
 各阶段也可通过安装后生成的 `generate-customer-events`、`build-customer-features`、`train-churn-baseline`、`predict-customer-churn` 和 `monitor-churn-drift` 命令独立运行。
+
+生成演示产物后可启动只读预测查询服务：
+
+```powershell
+./scripts/api-up.ps1
+```
+
+服务默认读取 `build/demo/model/baseline.json` 和 `build/demo/predictions/candidate.ndjson`，接口说明见 [预测查询 API](docs/prediction-query-api.md)。
 
 运行测试：
 
@@ -56,3 +64,4 @@ python -m venv .venv
 - [需求与验收标准](docs/requirements.md)
 - [架构设计](docs/architecture.md)
 - [特征与预测漂移监控](docs/drift-monitoring.md)
+- [预测查询 API](docs/prediction-query-api.md)
