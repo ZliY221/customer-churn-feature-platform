@@ -13,7 +13,8 @@
 - [x] 实现按时间切分的训练、验证和测试数据集。
 - [x] 训练确定性逻辑回归基线并输出分类评估与校准指标。
 - [x] 保存特征清单、训练数据指纹、标准化参数和模型权重。
-- [ ] 实现幂等批量推理和 FastAPI 查询服务。
+- [x] 实现带模型与数据血缘的幂等批量推理。
+- [ ] 实现 FastAPI 预测查询服务。
 - [ ] 实现数据漂移与预测漂移报告。
 
 ## 事件模型
@@ -45,6 +46,12 @@ python -m churn_platform.training_cli `
   --validation-end 2026-04-30T00:00:00Z `
   --model-output build/model/baseline.json `
   --metrics-output build/model/metrics.json
+
+python -m churn_platform.inference_cli `
+  --input build/features/inference_snapshot.ndjson `
+  --model build/model/baseline.json `
+  --output build/predictions/churn.ndjson `
+  --manifest-output build/predictions/manifest.json
 ```
 
 运行测试：
@@ -56,7 +63,7 @@ python -m unittest discover -s tests -v
 
 ## 设计边界
 
-当前版本完成事件数据基础、时间点特征快照、未来流失标签以及按时间切分的逻辑回归基线。分类阈值只在验证集选择，测试集仅做最终评估；模型文件记录特征顺序、标准化参数、权重和训练数据 SHA-256。仓库中的自动化测试数据用于验证实现，不作为业务模型效果声明。后续版本将按照 [架构设计](docs/architecture.md) 增加推理和监控能力。
+当前版本完成事件数据基础、时间点特征快照、未来流失标签、按时间切分的逻辑回归基线和幂等批量推理。分类阈值只在验证集选择，测试集仅做最终评估；预测记录使用模型哈希、客户键和快照时间生成稳定 ID，清单保存输入、模型和输出 SHA-256。仓库中的自动化测试数据用于验证实现，不作为业务模型效果声明。
 
 ## 文档
 
