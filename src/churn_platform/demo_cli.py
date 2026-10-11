@@ -12,6 +12,7 @@ from .drift import monitor_drift
 from .features import SnapshotConfig, build_feature_snapshot, write_snapshot
 from .generator import GeneratorConfig, generate_events
 from .inference import canonical_sha256, predict_rows, write_prediction_batch
+from .performance import evaluate_performance
 from .training import TemporalSplitConfig, temporal_split, train_baseline
 from .validation import validate_event
 
@@ -100,8 +101,8 @@ def run_demo(output_dir: Path) -> dict[str, Any]:
             input_sha256=canonical_sha256(rows),
         )
 
-    policy_path = Path(__file__).resolve().parents[2] / "config" / "drift-policy.json"
-    policy = json.loads(policy_path.read_text(encoding="utf-8"))
+    config_root = Path(__file__).resolve().parents[2] / "config"
+    policy = json.loads((config_root / "drift-policy.json").read_text(encoding="utf-8"))
     drift_report = monitor_drift(
         snapshots["2026-05-15"],
         snapshots["2026-05-31"],
@@ -111,6 +112,26 @@ def run_demo(output_dir: Path) -> dict[str, Any]:
     )
     drift_path = output_dir / "drift" / "report.json"
     _write_json(drift_path, drift_report)
+
+    label_rows = [
+        {
+            "customer_key": row["customer_key"],
+            "as_of_time": row["as_of_time"],
+            "churned_30d": row["churned_30d"],
+            "label_observed_at": "2026-07-01T00:00:00Z",
+        }
+        for row in snapshots["2026-05-31"]
+    ]
+    labels_path = output_dir / "labels" / "candidate.ndjson"
+    _write_events(labels_path, label_rows)
+    performance_policy = json.loads(
+        (config_root / "performance-policy.json").read_text(encoding="utf-8")
+    )
+    performance_report = evaluate_performance(
+        prediction_sets["candidate"], label_rows, performance_policy
+    )
+    performance_path = output_dir / "performance" / "report.json"
+    _write_json(performance_path, performance_report)
 
     summary = {
         "status": "COMPLETE",
@@ -122,12 +143,16 @@ def run_demo(output_dir: Path) -> dict[str, Any]:
         "candidate_prediction_count": manifests["candidate"]["prediction_count"],
         "drift_status": drift_report["status"],
         "drift_alert_count": len(drift_report["alerts"]),
+        "performance_status": performance_report["status"],
+        "performance_alert_count": len(performance_report["alerts"]),
         "outputs": {
             "events": str(events_path),
             "training_features": str(training_path),
             "model": str(model_path),
             "metrics": str(metrics_path),
             "drift_report": str(drift_path),
+            "labels": str(labels_path),
+            "performance_report": str(performance_path),
         },
     }
     _write_json(output_dir / "summary.json", summary)

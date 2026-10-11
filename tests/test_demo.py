@@ -27,6 +27,8 @@ class DemoPipelineTests(unittest.TestCase):
                 "predictions/reference.ndjson",
                 "predictions/candidate.ndjson",
                 "drift/report.json",
+                "labels/candidate.ndjson",
+                "performance/report.json",
                 "summary.json",
             ):
                 self.assertTrue((root / relative_path).is_file(), relative_path)

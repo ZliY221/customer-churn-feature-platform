@@ -2,7 +2,7 @@
 
 本项目实现从匿名行为事件、时间点特征快照、模型训练与评估，到批量推理、查询服务和漂移监控的完整机器学习数据链路。设计重点是防止标签泄漏、保证训练可复现，并让数据版本、模型版本和预测结果能够追溯。
 
-当前版本：`v0.6.0`。版本变更见 [CHANGELOG](CHANGELOG.md)。
+当前版本：`v0.7.0`。版本变更见 [CHANGELOG](CHANGELOG.md)。
 
 ## 当前进度
 
@@ -18,6 +18,7 @@
 - [x] 实现带模型与数据血缘的幂等批量推理。
 - [x] 实现 FastAPI 预测查询服务。
 - [x] 实现带输入血缘、PSI 和稳定告警编号的数据漂移与预测漂移报告。
+- [x] 实现延迟标签覆盖检查与模型效果监控。
 
 ## 事件模型
 
@@ -35,9 +36,9 @@ python -m venv .venv
 ./.venv/Scripts/run-churn-demo.exe --output-dir build/demo
 ```
 
-该命令从固定种子的匿名事件开始，依次生成六个时间点特征快照，完成时间切分训练、两批推理与漂移报告。入口正常结束后会生成 `build/demo/summary.json`；模型指标、预测清单、输入指纹和漂移明细保存在同一目录下。漂移状态可能为 `ALERT`，表示候选批次触发策略阈值，不代表演示流程执行失败。
+该命令从固定种子的匿名事件开始，依次生成六个时间点特征快照，完成时间切分训练、两批推理、漂移报告和延迟标签效果报告。入口正常结束后会生成 `build/demo/summary.json`；模型指标、预测清单、输入指纹和监控明细保存在同一目录下。监控状态可能为 `ALERT`，表示候选批次触发策略阈值，不代表演示流程执行失败。
 
-各阶段也可通过安装后生成的 `generate-customer-events`、`build-customer-features`、`train-churn-baseline`、`predict-customer-churn` 和 `monitor-churn-drift` 命令独立运行。
+各阶段也可通过安装后生成的 `generate-customer-events`、`build-customer-features`、`train-churn-baseline`、`predict-customer-churn`、`monitor-churn-drift` 和 `monitor-churn-performance` 命令独立运行。
 
 生成演示产物后可启动只读预测查询服务：
 
@@ -59,9 +60,12 @@ python -m venv .venv
 
 漂移报告按特征输出 PSI，并检查平均预测概率和正例率变化。报告只保存聚合结果和规范化输入指纹；漂移告警不等同于模型效果衰减结论。
 
+延迟标签效果监控要求观察时间覆盖完整的未来 30 天，并校验标签覆盖率、已标注行数和类别完整性。数据充分后才计算 ROC-AUC、PR-AUC、F1 和 Brier 分数；报告不保存客户级关联结果。
+
 ## 文档
 
 - [需求与验收标准](docs/requirements.md)
 - [架构设计](docs/architecture.md)
 - [特征与预测漂移监控](docs/drift-monitoring.md)
 - [预测查询 API](docs/prediction-query-api.md)
+- [延迟标签模型效果监控](docs/model-performance-monitoring.md)

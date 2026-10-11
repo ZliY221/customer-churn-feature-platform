@@ -1,0 +1,11 @@
+{
+  "policy_version": "1.0",
+  "thresholds": {
+    "minimum_label_coverage": 0.8,
+    "minimum_labeled_rows": 20,
+    "minimum_roc_auc": 0.6,
+    "minimum_pr_auc": 0.3,
+    "minimum_f1": 0.4,
+    "maximum_brier_score": 0.3
+  }
+}
