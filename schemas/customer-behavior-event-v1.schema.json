@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/customer-behavior-event-v1.schema.json",
+  "title": "Customer behavior event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "customer_key",
+    "event_type",
+    "event_time",
+    "ingest_time",
+    "channel",
+    "device_type",
+    "product_category",
+    "order_amount"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "event_id": { "type": "string", "pattern": "^evt_[0-9a-f]{32}$" },
+    "customer_key": { "type": "string", "pattern": "^cus_[0-9a-f]{20}$" },
+    "event_type": {
+      "enum": ["login", "product_view", "cart_add", "order_completed", "support_ticket"]
+    },
+    "event_time": { "type": "string", "format": "date-time" },
+    "ingest_time": { "type": "string", "format": "date-time" },
+    "channel": { "enum": ["app", "web", "mini_program"] },
+    "device_type": { "enum": ["android", "ios", "desktop"] },
+    "product_category": { "enum": ["digital", "home", "sports", "beauty"] },
+    "order_amount": { "type": ["string", "null"], "pattern": "^[0-9]+\\.[0-9]{2}$" }
+  }
+}
