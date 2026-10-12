@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .comparison import compare_models
 from .drift import monitor_drift
 from .features import SnapshotConfig, build_feature_snapshot, write_snapshot
 from .generator import GeneratorConfig, generate_events
@@ -83,6 +84,13 @@ def run_demo(output_dir: Path) -> dict[str, Any]:
     metrics_path = output_dir / "model" / "metrics.json"
     _write_json(model_path, model)
     _write_json(metrics_path, metrics)
+    challenger_model, challenger_metrics = train_baseline(
+        splits, epochs=800, learning_rate=0.04
+    )
+    challenger_model_path = output_dir / "model" / "challenger.json"
+    challenger_metrics_path = output_dir / "model" / "challenger-metrics.json"
+    _write_json(challenger_model_path, challenger_model)
+    _write_json(challenger_metrics_path, challenger_metrics)
 
     prediction_sets: dict[str, list[dict[str, Any]]] = {}
     manifests: dict[str, dict[str, Any]] = {}
@@ -100,6 +108,16 @@ def run_demo(output_dir: Path) -> dict[str, Any]:
             model_sha256=model_sha256,
             input_sha256=canonical_sha256(rows),
         )
+    challenger_predictions, challenger_model_sha256 = predict_rows(
+        snapshots["2026-05-31"], challenger_model
+    )
+    write_prediction_batch(
+        challenger_predictions,
+        output_dir / "predictions" / "challenger.ndjson",
+        output_dir / "predictions" / "challenger-manifest.json",
+        model_sha256=challenger_model_sha256,
+        input_sha256=canonical_sha256(snapshots["2026-05-31"]),
+    )
 
     config_root = Path(__file__).resolve().parents[2] / "config"
     policy = json.loads((config_root / "drift-policy.json").read_text(encoding="utf-8"))
@@ -132,6 +150,18 @@ def run_demo(output_dir: Path) -> dict[str, Any]:
     )
     performance_path = output_dir / "performance" / "report.json"
     _write_json(performance_path, performance_report)
+    comparison_policy = json.loads(
+        (config_root / "model-comparison-policy.json").read_text(encoding="utf-8")
+    )
+    comparison_report = compare_models(
+        prediction_sets["candidate"],
+        challenger_predictions,
+        label_rows,
+        performance_policy,
+        comparison_policy,
+    )
+    comparison_path = output_dir / "comparison" / "report.json"
+    _write_json(comparison_path, comparison_report)
 
     summary = {
         "status": "COMPLETE",
@@ -145,6 +175,7 @@ def run_demo(output_dir: Path) -> dict[str, Any]:
         "drift_alert_count": len(drift_report["alerts"]),
         "performance_status": performance_report["status"],
         "performance_alert_count": len(performance_report["alerts"]),
+        "model_recommendation": comparison_report["recommendation"],
         "outputs": {
             "events": str(events_path),
             "training_features": str(training_path),
@@ -153,6 +184,9 @@ def run_demo(output_dir: Path) -> dict[str, Any]:
             "drift_report": str(drift_path),
             "labels": str(labels_path),
             "performance_report": str(performance_path),
+            "challenger_model": str(challenger_model_path),
+            "challenger_metrics": str(challenger_metrics_path),
+            "model_comparison": str(comparison_path),
         },
     }
     _write_json(output_dir / "summary.json", summary)

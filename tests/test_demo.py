@@ -24,11 +24,15 @@ class DemoPipelineTests(unittest.TestCase):
                 "features/training_snapshots.ndjson",
                 "model/baseline.json",
                 "model/metrics.json",
+                "model/challenger.json",
+                "model/challenger-metrics.json",
                 "predictions/reference.ndjson",
                 "predictions/candidate.ndjson",
+                "predictions/challenger.ndjson",
                 "drift/report.json",
                 "labels/candidate.ndjson",
                 "performance/report.json",
+                "comparison/report.json",
                 "summary.json",
             ):
                 self.assertTrue((root / relative_path).is_file(), relative_path)

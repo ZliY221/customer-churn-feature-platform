@@ -1,0 +1,9 @@
+{
+  "policy_version": "1.0",
+  "thresholds": {
+    "minimum_roc_auc_improvement": 0.01,
+    "minimum_pr_auc_improvement": 0.01,
+    "minimum_f1_improvement": 0.01,
+    "maximum_brier_score_regression": 0.0
+  }
+}
