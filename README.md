@@ -5,7 +5,7 @@
 
 本项目实现从匿名行为事件、时间点特征快照、模型训练与评估，到批量推理、查询服务和漂移监控的完整机器学习数据链路。设计重点是防止标签泄漏、保证训练可复现，并让数据版本、模型版本和预测结果能够追溯。
 
-当前版本：`v0.10.0`。版本变更见 [CHANGELOG](CHANGELOG.md)，版本摘要见 [VERSION_LOG](VERSION_LOG.md)。
+当前版本：`v0.11.0`。版本变更见 [CHANGELOG](CHANGELOG.md)，版本摘要见 [VERSION_LOG](VERSION_LOG.md)。
 
 ## 当前进度
 
@@ -26,6 +26,7 @@
 - [x] 提供核心链路与 API 两档跨平台环境自检和诊断报告。
 - [x] 在 Windows、Ubuntu 和 macOS 干净环境运行完整确定性建模流程。
 - [x] 提供环境诊断、建模、推理、监控和模型对比的一键跨平台入口。
+- [x] 提供自动创建、复用和更新项目隔离环境的跨平台启动器。
 
 ## 事件模型
 
@@ -52,6 +53,14 @@ python scripts/project_doctor.py --profile api --json-output build/doctor/report
 python -m pip install -e .
 python scripts/quickstart.py
 ```
+
+全新检出或 ZIP 解压后，也可以直接创建项目隔离环境并运行完整流程：
+
+```powershell
+python scripts/bootstrap.py
+```
+
+启动器不修改系统 Python；配置指纹一致时复用 `build/portable-runtime/`。参数和更新规则见[隔离运行时启动器](docs/portable-runtime.md)。
 
 该命令从固定种子的匿名事件开始，依次生成六个时间点特征快照，完成时间切分训练、Champion 与 Challenger 推理、漂移报告、延迟标签效果报告和模型对比建议。入口正常结束后会生成 `build/quickstart/summary.json`；模型指标、预测清单、输入指纹和监控明细保存在 `build/quickstart/demo/`。监控状态可能为 `ALERT`，表示候选批次触发策略阈值，不代表演示流程执行失败。详细输出契约见[一键建模与监控流程](docs/quickstart.md)。
 
@@ -86,6 +95,7 @@ python scripts/quickstart.py
 - [需求与验收标准](docs/requirements.md)
 - [跨平台环境自检](docs/environment-preflight.md)
 - [一键建模与监控流程](docs/quickstart.md)
+- [隔离运行时启动器](docs/portable-runtime.md)
 - [架构设计](docs/architecture.md)
 - [特征与预测漂移监控](docs/drift-monitoring.md)
 - [预测查询 API](docs/prediction-query-api.md)

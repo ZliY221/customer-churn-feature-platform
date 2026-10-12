@@ -2,6 +2,8 @@
 
 `scripts/quickstart.py` 从固定种子的匿名事件开始，依次构建六期时间点特征、训练 Champion 与 Challenger、执行批量推理、计算漂移和延迟标签效果，并输出模型对比建议。
 
+全新环境可先运行 `python scripts/bootstrap.py`，由[隔离运行时启动器](portable-runtime.md)创建项目内虚拟环境、安装当前项目并调用本入口。
+
 ## 运行
 
 ```shell
