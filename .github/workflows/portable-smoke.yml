@@ -1,0 +1,48 @@
+name: Portable smoke
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portable-smoke-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  portable-model-flow:
+    name: ${{ matrix.os }} portable model flow
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: src
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install API and verification dependencies
+        run: python -m pip install --disable-pip-version-check -e ".[api,test]"
+      - name: Inspect the API environment
+        run: >-
+          python scripts/project_doctor.py
+          --profile api
+          --json-output build/portable/doctor.json
+          --markdown-output build/portable/doctor.md
+      - name: Run the deterministic model flow
+        run: run-churn-demo --output-dir build/portable/demo
+      - name: Verify the complete demo contract
+        run: python -W error -m unittest tests.test_demo -v

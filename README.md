@@ -1,8 +1,11 @@
 # 用户行为特征平台与客户流失预测系统
 
+[![CI](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/ci.yml)
+[![Portable smoke](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/portable-smoke.yml/badge.svg)](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/portable-smoke.yml)
+
 本项目实现从匿名行为事件、时间点特征快照、模型训练与评估，到批量推理、查询服务和漂移监控的完整机器学习数据链路。设计重点是防止标签泄漏、保证训练可复现，并让数据版本、模型版本和预测结果能够追溯。
 
-当前版本：`v0.9.0`。版本变更见 [CHANGELOG](CHANGELOG.md)，版本摘要见 [VERSION_LOG](VERSION_LOG.md)。
+当前版本：`v0.9.1`。版本变更见 [CHANGELOG](CHANGELOG.md)，版本摘要见 [VERSION_LOG](VERSION_LOG.md)。
 
 ## 当前进度
 
@@ -21,6 +24,7 @@
 - [x] 实现延迟标签覆盖检查与模型效果监控。
 - [x] 实现同批成熟标签下的 Champion/Challenger 模型对比与晋级建议。
 - [x] 提供核心链路与 API 两档跨平台环境自检和诊断报告。
+- [x] 在 Windows、Ubuntu 和 macOS 干净环境运行完整确定性建模流程。
 
 ## 事件模型
 
@@ -40,6 +44,8 @@ python scripts/project_doctor.py --profile api --json-output build/doctor/report
 ```
 
 自检入口只使用 Python 标准库；详细范围和退出码见[环境自检](docs/environment-preflight.md)。
+
+`.github/workflows/portable-smoke.yml` 会在 Windows、Ubuntu 和 macOS 上从全新检出安装固定依赖，执行环境自检和完整演示流程，并核对演示产物契约。发布标签不会重复触发该工作流。
 
 ```powershell
 python -m venv .venv

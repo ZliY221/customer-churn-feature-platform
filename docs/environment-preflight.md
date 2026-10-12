@@ -14,3 +14,7 @@ python scripts/project_doctor.py --profile api --json-output build/doctor/report
 ```
 
 全部条件满足时报告状态为 `READY`，进程退出码为 `0`；缺少必需条件时状态为 `BLOCKED`，退出码为 `1`。报告只记录运行时版本与依赖可用性，不读取模型权重、客户级预测内容或环境变量值。
+
+## 平台验证范围
+
+`portable-smoke.yml` 在 Windows、Ubuntu 和 macOS 上执行 Python 3.11 安装、API 环境自检和完整确定性演示流程，并重新核对演示产物契约。
