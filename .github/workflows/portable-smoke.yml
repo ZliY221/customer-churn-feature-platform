@@ -37,12 +37,10 @@ jobs:
       - name: Bootstrap the isolated runtime and run the public quickstart
         run: >-
           python scripts/bootstrap.py
-          --runtime-dir build/portable-runtime
           --
           --output-dir build/portable
       - name: Reuse the isolated runtime
         run: >-
           python scripts/bootstrap.py
-          --runtime-dir build/portable-runtime
           --
           --output-dir build/portable

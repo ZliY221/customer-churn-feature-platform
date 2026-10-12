@@ -20,11 +20,15 @@ class BootstrapTest(unittest.TestCase):
         signature = BOOTSTRAP._runtime_signature()
         self.assertEqual(signature["schema"], 1)
         self.assertEqual(signature["project"], "customer-churn-feature-platform")
-        self.assertEqual(signature["project_version"], "0.11.0")
+        self.assertEqual(signature["project_version"], "0.11.1")
+        self.assertEqual(len(signature["checkout_key"]), 12)
         self.assertEqual(signature["install_extras"], "")
         self.assertEqual(len(signature["pyproject_sha256"]), 64)
 
     def test_runtime_directory_is_restricted_to_a_build_child(self) -> None:
+        default = BOOTSTRAP._resolve_runtime_dir(None)
+        self.assertTrue(default.is_relative_to(BOOTSTRAP.MANAGED_CACHE_ROOT))
+        self.assertIn("customer-churn-feature-platform", default.name)
         expected = (ROOT / "build" / "portable-runtime").resolve()
         self.assertEqual(
             BOOTSTRAP._resolve_runtime_dir(Path("build/portable-runtime")), expected

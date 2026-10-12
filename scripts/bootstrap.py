@@ -20,6 +20,17 @@ MARKER_SCHEMA = 1
 INSTALL_EXTRAS = ""
 
 
+def _managed_cache_root() -> Path:
+    if os.name == "nt":
+        base = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
+    else:
+        base = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+    return (base / "ZliY221" / "project-runtimes").resolve()
+
+
+MANAGED_CACHE_ROOT = _managed_cache_root()
+
+
 def _project_metadata() -> tuple[str, str, str]:
     pyproject = ROOT / "pyproject.toml"
     content = pyproject.read_bytes()
@@ -32,11 +43,24 @@ def _runtime_python(runtime_dir: Path) -> Path:
     return runtime_dir / relative
 
 
-def _resolve_runtime_dir(value: Path) -> Path:
+def _checkout_key() -> str:
+    normalized = os.path.normcase(str(ROOT.resolve()))
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:12]
+
+
+def _default_runtime_dir() -> Path:
+    name, _, _ = _project_metadata()
+    return MANAGED_CACHE_ROOT / f"{name}-{_checkout_key()}"
+
+
+def _resolve_runtime_dir(value: Path | None) -> Path:
+    if value is None:
+        return _default_runtime_dir()
     candidate = value if value.is_absolute() else ROOT / value
     resolved = candidate.resolve()
-    if resolved == BUILD_ROOT or not resolved.is_relative_to(BUILD_ROOT):
-        raise ValueError("runtime directory must be a child of the project build directory")
+    allowed_roots = (BUILD_ROOT, MANAGED_CACHE_ROOT)
+    if not any(resolved != root and resolved.is_relative_to(root) for root in allowed_roots):
+        raise ValueError("runtime directory must be below the project build or managed cache directory")
     return resolved
 
 
@@ -46,6 +70,7 @@ def _runtime_signature() -> dict[str, object]:
         "schema": MARKER_SCHEMA,
         "project": name,
         "project_version": version,
+        "checkout_key": _checkout_key(),
         "pyproject_sha256": pyproject_hash,
         "python_implementation": platform.python_implementation(),
         "python_version": platform.python_version(),
@@ -105,7 +130,7 @@ def main() -> int:
         description="Prepare an isolated project runtime and execute the public quickstart"
     )
     parser.add_argument(
-        "--runtime-dir", type=Path, default=Path("build/portable-runtime")
+        "--runtime-dir", type=Path
     )
     parser.add_argument("--refresh-runtime", action="store_true")
     args, quickstart_args = parser.parse_known_args()
