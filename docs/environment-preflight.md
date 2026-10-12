@@ -17,4 +17,4 @@ python scripts/project_doctor.py --profile api --json-output build/doctor/report
 
 ## 平台验证范围
 
-`portable-smoke.yml` 在 Windows、Ubuntu 和 macOS 上执行 Python 3.11 安装、API 环境自检和完整确定性演示流程，并重新核对演示产物契约。
+`portable-smoke.yml` 在 Windows、Ubuntu 和 macOS 上从全新检出执行 `scripts/quickstart.py`，覆盖核心环境自检和完整确定性演示流程，并重新核对演示产物契约。查询 API 由主持续集成工作流独立验证。

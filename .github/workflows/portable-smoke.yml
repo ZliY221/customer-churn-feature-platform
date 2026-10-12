@@ -36,13 +36,7 @@ jobs:
           cache-dependency-path: pyproject.toml
       - name: Install API and verification dependencies
         run: python -m pip install --disable-pip-version-check -e ".[api,test]"
-      - name: Inspect the API environment
-        run: >-
-          python scripts/project_doctor.py
-          --profile api
-          --json-output build/portable/doctor.json
-          --markdown-output build/portable/doctor.md
-      - name: Run the deterministic model flow
-        run: run-churn-demo --output-dir build/portable/demo
+      - name: Run the public quickstart
+        run: python scripts/quickstart.py --output-dir build/portable
       - name: Verify the complete demo contract
         run: python -W error -m unittest tests.test_demo -v
