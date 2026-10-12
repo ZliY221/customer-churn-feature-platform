@@ -2,7 +2,7 @@
 
 本项目实现从匿名行为事件、时间点特征快照、模型训练与评估，到批量推理、查询服务和漂移监控的完整机器学习数据链路。设计重点是防止标签泄漏、保证训练可复现，并让数据版本、模型版本和预测结果能够追溯。
 
-当前版本：`v0.8.0`。版本变更见 [CHANGELOG](CHANGELOG.md)，版本摘要见 [VERSION_LOG](VERSION_LOG.md)。
+当前版本：`v0.9.0`。版本变更见 [CHANGELOG](CHANGELOG.md)，版本摘要见 [VERSION_LOG](VERSION_LOG.md)。
 
 ## 当前进度
 
@@ -20,6 +20,7 @@
 - [x] 实现带输入血缘、PSI 和稳定告警编号的数据漂移与预测漂移报告。
 - [x] 实现延迟标签覆盖检查与模型效果监控。
 - [x] 实现同批成熟标签下的 Champion/Challenger 模型对比与晋级建议。
+- [x] 提供核心链路与 API 两档跨平台环境自检和诊断报告。
 
 ## 事件模型
 
@@ -30,6 +31,15 @@
 ## 本地运行
 
 要求 Python 3.11 或更高版本。
+
+克隆或下载仓库后，可先检查核心链路或 API 运行条件：
+
+```powershell
+python scripts/project_doctor.py --profile core
+python scripts/project_doctor.py --profile api --json-output build/doctor/report.json --markdown-output build/doctor/report.md
+```
+
+自检入口只使用 Python 标准库；详细范围和退出码见[环境自检](docs/environment-preflight.md)。
 
 ```powershell
 python -m venv .venv
@@ -66,6 +76,7 @@ python -m venv .venv
 ## 文档
 
 - [需求与验收标准](docs/requirements.md)
+- [跨平台环境自检](docs/environment-preflight.md)
 - [架构设计](docs/architecture.md)
 - [特征与预测漂移监控](docs/drift-monitoring.md)
 - [预测查询 API](docs/prediction-query-api.md)
