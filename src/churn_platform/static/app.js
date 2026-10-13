@@ -48,6 +48,7 @@ function renderTasks(eventCount = 0) {
         <select class="task-status" data-id="${task.task_id}" aria-label="更新任务状态">
           ${statuses.map(option => `<option value="${option}" ${option === status ? 'selected' : ''}>${statusNames[option]}</option>`).join('')}
         </select>
+        <button class="task-history" data-id="${task.task_id}" type="button">查看时间线</button>
       </article>`).join('')}</div>`
   }).join('')
 }
@@ -89,6 +90,23 @@ document.addEventListener('click', event => {
   $('#task-playbook').value = button.dataset.playbook
   $('#task-owner').value = 'retention-team'
   $('#task-dialog').showModal()
+})
+
+document.addEventListener('click', async event => {
+  const button = event.target.closest('.task-history')
+  if (!button) return
+  try {
+    const history = await request(`/v1/retention/tasks/${button.dataset.id}/events`)
+    $('#history-task-id').textContent = history.task_id
+    $('#history-list').innerHTML = history.items.map(item => `
+      <li><span>${new Date(item.occurred_at).toLocaleString('zh-CN', { hour12: false })}</span>
+      <strong>${item.event_type === 'CREATED' ? '创建任务' : '状态变更'}</strong>
+      <small>${item.from_status ? `${statusNames[item.from_status]} → ` : ''}${statusNames[item.to_status]}</small></li>`).join('')
+    $('#history-dialog').showModal()
+  } catch (error) {
+    $('#error-banner').textContent = error.message
+    $('#error-banner').hidden = false
+  }
 })
 
 $('#task-form').addEventListener('submit', async event => {

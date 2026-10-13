@@ -5,7 +5,7 @@
 
 本项目实现从匿名行为事件、时间点特征快照、模型训练与评估，到批量推理、漂移监控和留存运营闭环的完整数据链路。平台将模型结果转化为风险分层、客户优先队列和可跟踪的留存任务，同时保留数据版本、模型版本与预测批次的完整追溯关系。
 
-当前版本：`v1.1.0`。使用方法见 [用户使用指南](docs/user-guide.md)，版本变更见 [CHANGELOG](CHANGELOG.md)，版本摘要见 [VERSION_LOG](VERSION_LOG.md)。
+当前版本：`v1.2.0`。使用方法见 [用户使用指南](docs/user-guide.md)，版本变更见 [CHANGELOG](CHANGELOG.md)，版本摘要见 [VERSION_LOG](VERSION_LOG.md)。
 
 ## 当前进度
 
