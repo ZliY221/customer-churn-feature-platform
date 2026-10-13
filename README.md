@@ -5,7 +5,7 @@
 
 本项目实现从匿名行为事件、时间点特征快照、模型训练与评估，到批量推理、查询服务和漂移监控的完整机器学习数据链路。设计重点是防止标签泄漏、保证训练可复现，并让数据版本、模型版本和预测结果能够追溯。
 
-当前版本：`v0.11.1`。版本变更见 [CHANGELOG](CHANGELOG.md)，版本摘要见 [VERSION_LOG](VERSION_LOG.md)。
+当前版本：`v0.12.0`。版本变更见 [CHANGELOG](CHANGELOG.md)，版本摘要见 [VERSION_LOG](VERSION_LOG.md)。
 
 ## 当前进度
 
@@ -27,6 +27,7 @@
 - [x] 在 Windows、Ubuntu 和 macOS 干净环境运行完整确定性建模流程。
 - [x] 提供环境诊断、建模、推理、监控和模型对比的一键跨平台入口。
 - [x] 提供自动创建、复用和更新项目隔离环境的跨平台启动器。
+- [x] 增加版本化特征注册表、查询接口和离线/在线一致性核对报告。
 
 ## 事件模型
 
@@ -66,7 +67,7 @@ python scripts/bootstrap.py
 
 `.github/workflows/portable-smoke.yml` 会在 Windows、Ubuntu 和 macOS 上从全新检出执行同一个公开入口，并核对演示产物契约。发布标签不会重复触发该工作流。
 
-各阶段也可通过安装后生成的 `generate-customer-events`、`build-customer-features`、`train-churn-baseline`、`predict-customer-churn`、`monitor-churn-drift`、`monitor-churn-performance` 和 `compare-churn-models` 命令独立运行。
+各阶段也可通过安装后生成的 `generate-customer-events`、`build-customer-features`、`train-churn-baseline`、`predict-customer-churn`、`monitor-churn-drift`、`monitor-churn-performance`、`compare-churn-models` 和 `check-feature-parity` 命令独立运行。
 
 生成演示产物后可启动只读预测查询服务：
 
@@ -75,6 +76,18 @@ python scripts/bootstrap.py
 ```
 
 服务默认读取 `build/demo/model/baseline.json` 和 `build/demo/predictions/candidate.ndjson`，接口说明见 [预测查询 API](docs/prediction-query-api.md)。
+
+特征注册表位于 `config/feature-registry.json`，查询服务通过 `GET /v1/features` 返回注册表版本、指纹和十项模型特征。对两份同一时间点的离线与在线特征执行一致性核对：
+
+```powershell
+check-feature-parity `
+  --registry config/feature-registry.json `
+  --offline build/offline/features.ndjson `
+  --online build/online/features.ndjson `
+  --output build/parity/report.json
+```
+
+报告按特征统计差异，并只保存实体与时间组合的短哈希，不复制客户键。完整口径见[特征注册表与一致性核对](docs/feature-registry-parity.md)。
 
 运行测试：
 
@@ -101,4 +114,5 @@ python scripts/bootstrap.py
 - [预测查询 API](docs/prediction-query-api.md)
 - [延迟标签模型效果监控](docs/model-performance-monitoring.md)
 - [Champion/Challenger 模型对比](docs/model-comparison.md)
+- [特征注册表与一致性核对](docs/feature-registry-parity.md)
 - [版本日志](VERSION_LOG.md)

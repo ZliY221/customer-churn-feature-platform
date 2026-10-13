@@ -13,6 +13,7 @@ from fastapi import FastAPI, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict
 
 from .inference import canonical_sha256, load_model
+from .feature_registry import FeatureRegistry
 
 
 class Prediction(BaseModel):
@@ -94,11 +95,17 @@ def _repository(request: Request) -> PredictionRepository:
 
 
 def create_app(
-    model_path: Path | None = None, predictions_path: Path | None = None
+    model_path: Path | None = None,
+    predictions_path: Path | None = None,
+    *,
+    feature_registry_path: Path | None = None,
 ) -> FastAPI:
     configured_model = model_path or Path(os.getenv("CHURN_MODEL_PATH", "build/demo/model/baseline.json"))
     configured_predictions = predictions_path or Path(
         os.getenv("CHURN_PREDICTIONS_PATH", "build/demo/predictions/candidate.ndjson")
+    )
+    configured_registry = feature_registry_path or Path(
+        os.getenv("CHURN_FEATURE_REGISTRY_PATH", "config/feature-registry.json")
     )
 
     @asynccontextmanager
@@ -106,8 +113,10 @@ def create_app(
         app.state.repository = PredictionRepository.from_files(
             configured_model, configured_predictions
         )
+        app.state.feature_registry = FeatureRegistry.from_file(configured_registry)
         yield
         app.state.repository = None
+        app.state.feature_registry = None
 
     app = FastAPI(
         title="Customer Churn Prediction Query API",
@@ -136,6 +145,10 @@ def create_app(
             "decision_threshold": model["decision_threshold"],
             "training_data_sha256": model["training_data_sha256"],
         }
+
+    @app.get("/v1/features")
+    def feature_registry(request: Request) -> dict[str, Any]:
+        return request.app.state.feature_registry.to_public_dict()
 
     @app.get("/v1/predictions", response_model=PredictionPage)
     def list_predictions(

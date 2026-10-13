@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "customer-churn-feature-platform"
-version = "0.11.1"
+version = "0.12.0"
 description = "Reproducible customer behavior features and churn prediction pipeline"
 requires-python = ">=3.11"
 
@@ -17,6 +17,7 @@ monitor-churn-drift = "churn_platform.drift_cli:main"
 monitor-churn-performance = "churn_platform.performance_cli:main"
 compare-churn-models = "churn_platform.comparison_cli:main"
 run-churn-demo = "churn_platform.demo_cli:main"
+check-feature-parity = "churn_platform.feature_registry_cli:main"
 
 [project.optional-dependencies]
 api = [

@@ -28,11 +28,15 @@ class PredictionApiTests(unittest.TestCase):
         with TestClient(create_app(self.model, self.predictions)) as client:
             health = client.get("/health")
             metadata = client.get("/v1/model")
+            registry = client.get("/v1/features")
         self.assertEqual(200, health.status_code)
         self.assertEqual("ready", health.json()["status"])
         self.assertEqual(100, health.json()["prediction_count"])
         self.assertEqual(health.json()["model_sha256"], metadata.json()["model_sha256"])
         self.assertEqual(10, len(metadata.json()["feature_columns"]))
+        self.assertEqual(200, registry.status_code)
+        self.assertEqual(10, registry.json()["feature_count"])
+        self.assertEqual(64, len(registry.json()["registry_sha256"]))
 
     def test_prediction_queries_are_bounded_and_not_found_is_explicit(self) -> None:
         with TestClient(create_app(self.model, self.predictions)) as client:

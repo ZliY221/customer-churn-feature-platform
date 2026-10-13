@@ -1,0 +1,18 @@
+{
+  "registry_version": "1.0.0",
+  "entity_key": "customer_key",
+  "timestamp_key": "as_of_time",
+  "owner": "customer-intelligence",
+  "features": [
+    {"name": "events_7d", "value_type": "integer", "online_enabled": true, "description": "近 7 天行为事件数"},
+    {"name": "events_30d", "value_type": "integer", "online_enabled": true, "description": "近 30 天行为事件数"},
+    {"name": "active_days_30d", "value_type": "integer", "online_enabled": true, "description": "近 30 天活跃天数"},
+    {"name": "login_count_30d", "value_type": "integer", "online_enabled": true, "description": "近 30 天登录次数"},
+    {"name": "product_view_count_30d", "value_type": "integer", "online_enabled": true, "description": "近 30 天商品浏览次数"},
+    {"name": "cart_add_count_30d", "value_type": "integer", "online_enabled": true, "description": "近 30 天加购次数"},
+    {"name": "order_count_30d", "value_type": "integer", "online_enabled": true, "description": "近 30 天成交次数"},
+    {"name": "support_ticket_count_30d", "value_type": "integer", "online_enabled": true, "description": "近 30 天服务工单次数"},
+    {"name": "revenue_30d", "value_type": "decimal", "online_enabled": true, "description": "近 30 天成交金额"},
+    {"name": "days_since_last_event", "value_type": "integer", "online_enabled": true, "description": "距离最近行为的天数"}
+  ]
+}
