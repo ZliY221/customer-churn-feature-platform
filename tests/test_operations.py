@@ -44,12 +44,17 @@ class RetentionOperationsTests(unittest.TestCase):
                 playbook="targeted-benefit-offer",
             )
             updated = store.update_status(created["task_id"], "COMPLETED")
+            events = store.events(created["task_id"])
             store.close()
 
             reopened = RetentionTaskStore(path)
             self.assertEqual("COMPLETED", updated["status"])
             self.assertEqual(1, reopened.status_counts()["COMPLETED"])
             self.assertEqual("a" * 64, reopened.list()[0]["model_sha256"])
+            self.assertEqual(["CREATED", "STATUS_CHANGED"], [row["event_type"] for row in events])
+            self.assertEqual("OPEN", events[1]["from_status"])
+            self.assertEqual("COMPLETED", events[1]["to_status"])
+            self.assertEqual(2, reopened.event_count())
             reopened.close()
 
 

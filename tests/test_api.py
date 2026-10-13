@@ -74,6 +74,9 @@ class PredictionApiTests(unittest.TestCase):
                 f"/v1/retention/tasks/{created.json()['task_id']}/status",
                 json={"status": "IN_PROGRESS"},
             )
+            events = client.get(
+                f"/v1/retention/tasks/{created.json()['task_id']}/events"
+            )
             tasks = client.get("/v1/retention/tasks", params={"status": "IN_PROGRESS"})
 
         self.assertEqual(200, console.status_code)
@@ -87,6 +90,8 @@ class PredictionApiTests(unittest.TestCase):
         self.assertEqual(prediction["recommended_playbook"], created.json()["playbook"])
         self.assertEqual(409, duplicate.status_code)
         self.assertEqual("IN_PROGRESS", updated.json()["status"])
+        self.assertEqual(2, events.json()["count"])
+        self.assertEqual("STATUS_CHANGED", events.json()["items"][1]["event_type"])
         self.assertEqual(1, tasks.json()["count"])
 
     def test_repository_rejects_model_lineage_mismatch(self) -> None:

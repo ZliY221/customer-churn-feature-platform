@@ -35,6 +35,17 @@ class RetentionTaskStore:
             );
             CREATE INDEX IF NOT EXISTS idx_retention_tasks_status_updated
                 ON retention_tasks(status, updated_at DESC);
+            CREATE TABLE IF NOT EXISTS retention_task_events (
+                event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                task_id TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                from_status TEXT,
+                to_status TEXT NOT NULL,
+                occurred_at TEXT NOT NULL,
+                FOREIGN KEY(task_id) REFERENCES retention_tasks(task_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_retention_task_events_task
+                ON retention_task_events(task_id, event_id);
             """
         )
         self.connection.commit()
@@ -74,6 +85,12 @@ class RetentionTaskStore:
                     now,
                 ),
             )
+            self.connection.execute(
+                """INSERT INTO retention_task_events (
+                       task_id, event_type, from_status, to_status, occurred_at
+                   ) VALUES (?, 'CREATED', NULL, 'OPEN', ?)""",
+                (task_id, now),
+            )
             self.connection.commit()
         except sqlite3.IntegrityError as error:
             raise ValueError("retention task already exists for this prediction") from error
@@ -104,14 +121,36 @@ class RetentionTaskStore:
         if status not in TASK_STATUSES:
             raise ValueError("unsupported retention task status")
         now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        current = self.get(task_id)
         cursor = self.connection.execute(
             "UPDATE retention_tasks SET status = ?, updated_at = ? WHERE task_id = ?",
             (status, now, task_id),
         )
         if cursor.rowcount == 0:
             raise KeyError(task_id)
+        self.connection.execute(
+            """INSERT INTO retention_task_events (
+                   task_id, event_type, from_status, to_status, occurred_at
+               ) VALUES (?, 'STATUS_CHANGED', ?, ?, ?)""",
+            (task_id, current["status"], status, now),
+        )
         self.connection.commit()
         return self.get(task_id)
+
+    def events(self, task_id: str) -> list[dict[str, Any]]:
+        self.get(task_id)
+        rows = self.connection.execute(
+            """SELECT event_id, task_id, event_type, from_status, to_status, occurred_at
+               FROM retention_task_events WHERE task_id = ? ORDER BY event_id""",
+            (task_id,),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+    def event_count(self) -> int:
+        row = self.connection.execute(
+            "SELECT COUNT(*) AS count FROM retention_task_events"
+        ).fetchone()
+        return int(row["count"])
 
     def status_counts(self) -> dict[str, int]:
         rows = self.connection.execute(

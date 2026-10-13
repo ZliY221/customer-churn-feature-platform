@@ -36,9 +36,9 @@ function renderPriority() {
     </tr>`).join('') : '<tr><td colspan="5">当前筛选条件下没有客户</td></tr>'
 }
 
-function renderTasks() {
+function renderTasks(eventCount = 0) {
   const statuses = ['OPEN', 'IN_PROGRESS', 'COMPLETED', 'DISMISSED']
-  $('#task-total').textContent = `${state.tasks.length} 条`
+  $('#task-total').textContent = `${state.tasks.length} 条 · ${eventCount} 条变更记录`
   $('#task-board').innerHTML = statuses.map(status => {
     const items = state.tasks.filter(task => task.status === status)
     return `<div class="task-column"><h3><span>${statusNames[status]}</span><span>${items.length}</span></h3>${items.map(task => `
@@ -74,7 +74,7 @@ async function load() {
     $('.lineage i').classList.add('ready')
     state.priority = priority.items
     state.tasks = tasks.items
-    renderRisk(summary); renderPriority(); renderTasks()
+    renderRisk(summary); renderPriority(); renderTasks(summary.retention_event_count)
     $('#error-banner').hidden = true
   } catch (error) {
     $('#error-banner').textContent = error.message

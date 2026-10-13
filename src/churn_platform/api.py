@@ -148,7 +148,7 @@ def create_app(
 
     app = FastAPI(
         title="Customer Retention Operations Platform",
-        version="1.0.0",
+        version="1.1.0",
         lifespan=lifespan,
     )
 
@@ -193,6 +193,7 @@ def create_app(
             **portfolio_summary(repository.rows),
             "model_sha256": repository.model_sha256,
             "retention_tasks": request.app.state.task_store.status_counts(),
+            "retention_event_count": request.app.state.task_store.event_count(),
         }
 
     @app.get("/v1/portfolio/priority")
@@ -287,6 +288,14 @@ def create_app(
             return request.app.state.task_store.update_status(task_id, command.status)
         except KeyError as error:
             raise HTTPException(status_code=404, detail="retention task not found") from error
+
+    @app.get("/v1/retention/tasks/{task_id}/events")
+    def retention_task_events(task_id: str, request: Request) -> dict[str, Any]:
+        try:
+            items = request.app.state.task_store.events(task_id)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="retention task not found") from error
+        return {"task_id": task_id, "count": len(items), "items": items}
 
     app.mount("/console/assets", StaticFiles(directory=STATIC_DIRECTORY), name="console-assets")
 
