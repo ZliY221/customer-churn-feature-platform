@@ -148,7 +148,7 @@ def create_app(
 
     app = FastAPI(
         title="Customer Retention Operations Platform",
-        version="1.2.0",
+        version="1.3.0",
         lifespan=lifespan,
     )
 
@@ -251,10 +251,23 @@ def create_app(
     def list_retention_tasks(
         request: Request,
         status: Literal["OPEN", "IN_PROGRESS", "COMPLETED", "DISMISSED"] | None = None,
+        risk_band: Literal["CRITICAL", "HIGH", "WATCH", "STABLE"] | None = None,
+        owner: Annotated[str | None, Query(min_length=1, max_length=80)] = None,
         limit: Annotated[int, Query(ge=1, le=500)] = 100,
     ) -> dict[str, Any]:
-        items = request.app.state.task_store.list(status=status, limit=limit)
-        return {"count": len(items), "limit": limit, "status": status, "items": items}
+        items = request.app.state.task_store.list(
+            status=status,
+            risk_band=risk_band,
+            owner=owner,
+            limit=limit,
+        )
+        return {
+            "count": len(items),
+            "limit": limit,
+            "status": status,
+            "filters": {"status": status, "risk_band": risk_band, "owner": owner},
+            "items": items,
+        }
 
     @app.post("/v1/retention/tasks", status_code=201)
     def create_retention_task(

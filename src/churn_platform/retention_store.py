@@ -104,17 +104,25 @@ class RetentionTaskStore:
             raise KeyError(task_id)
         return dict(row)
 
-    def list(self, *, status: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
-        if status is None:
-            rows = self.connection.execute(
-                "SELECT * FROM retention_tasks ORDER BY updated_at DESC LIMIT ?", (limit,)
-            ).fetchall()
-        else:
-            rows = self.connection.execute(
-                """SELECT * FROM retention_tasks
-                   WHERE status = ? ORDER BY updated_at DESC LIMIT ?""",
-                (status, limit),
-            ).fetchall()
+    def list(
+        self,
+        *,
+        status: str | None = None,
+        risk_band: str | None = None,
+        owner: str | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        conditions: list[str] = []
+        parameters: list[Any] = []
+        for column, value in (("status", status), ("risk_band", risk_band), ("owner", owner)):
+            if value is not None:
+                conditions.append(f"{column} = ?")
+                parameters.append(value)
+        where = f" WHERE {' AND '.join(conditions)}" if conditions else ""
+        rows = self.connection.execute(
+            f"SELECT * FROM retention_tasks{where} ORDER BY updated_at DESC LIMIT ?",
+            (*parameters, limit),
+        ).fetchall()
         return [dict(row) for row in rows]
 
     def update_status(self, task_id: str, status: str) -> dict[str, Any]:

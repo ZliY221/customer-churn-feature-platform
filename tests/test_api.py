@@ -78,6 +78,10 @@ class PredictionApiTests(unittest.TestCase):
                 f"/v1/retention/tasks/{created.json()['task_id']}/events"
             )
             tasks = client.get("/v1/retention/tasks", params={"status": "IN_PROGRESS"})
+            filtered = client.get(
+                "/v1/retention/tasks",
+                params={"risk_band": prediction["risk_band"], "owner": "retention-team"},
+            )
 
         self.assertEqual(200, console.status_code)
         self.assertIn("客户留存运营工作台", console.text)
@@ -94,6 +98,8 @@ class PredictionApiTests(unittest.TestCase):
         self.assertEqual(2, events.json()["count"])
         self.assertEqual("STATUS_CHANGED", events.json()["items"][1]["event_type"])
         self.assertEqual(1, tasks.json()["count"])
+        self.assertEqual(1, filtered.json()["count"])
+        self.assertEqual("retention-team", filtered.json()["filters"]["owner"])
 
     def test_repository_rejects_model_lineage_mismatch(self) -> None:
         model = json.loads(self.model.read_text(encoding="utf-8"))

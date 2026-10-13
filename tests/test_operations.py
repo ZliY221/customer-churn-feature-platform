@@ -51,6 +51,8 @@ class RetentionOperationsTests(unittest.TestCase):
             self.assertEqual("COMPLETED", updated["status"])
             self.assertEqual(1, reopened.status_counts()["COMPLETED"])
             self.assertEqual("a" * 64, reopened.list()[0]["model_sha256"])
+            self.assertEqual(1, len(reopened.list(risk_band="HIGH", owner="retention-team")))
+            self.assertEqual([], reopened.list(risk_band="STABLE"))
             self.assertEqual(["CREATED", "STATUS_CHANGED"], [row["event_type"] for row in events])
             self.assertEqual("OPEN", events[1]["from_status"])
             self.assertEqual("COMPLETED", events[1]["to_status"])

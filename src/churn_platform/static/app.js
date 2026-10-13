@@ -57,9 +57,12 @@ async function load() {
   try {
     const band = $('#risk-filter').value
     const suffix = band ? `&risk_band=${band}` : ''
+    const taskQuery = new URLSearchParams({ limit: '200' })
+    if ($('#task-risk-filter').value) taskQuery.set('risk_band', $('#task-risk-filter').value)
+    if ($('#task-owner-filter').value) taskQuery.set('owner', $('#task-owner-filter').value)
     const [summary, model, priority, tasks] = await Promise.all([
       request('/v1/portfolio/summary'), request('/v1/model'),
-      request(`/v1/portfolio/priority?limit=30${suffix}`), request('/v1/retention/tasks?limit=200'),
+      request(`/v1/portfolio/priority?limit=30${suffix}`), request(`/v1/retention/tasks?${taskQuery}`),
     ])
     $('#customer-count').textContent = summary.customer_count.toLocaleString()
     $('#predicted-count').textContent = summary.predicted_churn_count.toLocaleString()
@@ -75,6 +78,12 @@ async function load() {
     $('.lineage i').classList.add('ready')
     state.priority = priority.items
     state.tasks = tasks.items
+    if (!$('#task-risk-filter').value && !$('#task-owner-filter').value) {
+      const selectedOwner = $('#task-owner-filter').value
+      const owners = [...new Set(tasks.items.map(task => task.owner))].sort((left, right) => left.localeCompare(right, 'zh-CN'))
+      $('#task-owner-filter').replaceChildren(new Option('全部负责人', ''), ...owners.map(owner => new Option(owner, owner)))
+      $('#task-owner-filter').value = selectedOwner
+    }
     renderRisk(summary); renderPriority(); renderTasks(summary.retention_event_count)
     $('#error-banner').hidden = true
   } catch (error) {
@@ -122,7 +131,7 @@ $('#task-form').addEventListener('submit', async event => {
 })
 
 document.addEventListener('change', async event => {
-  if (event.target.id === 'risk-filter') { await load(); return }
+  if (['risk-filter', 'task-risk-filter', 'task-owner-filter'].includes(event.target.id)) { await load(); return }
   if (!event.target.classList.contains('task-status')) return
   try {
     await request(`/v1/retention/tasks/${event.target.dataset.id}/status`, {
