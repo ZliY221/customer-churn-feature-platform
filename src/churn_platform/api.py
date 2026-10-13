@@ -1,4 +1,4 @@
-"""Read-only prediction query API with model and batch lineage."""
+"""Prediction and retention operations API with model and batch lineage."""
 
 from __future__ import annotations
 
@@ -7,13 +7,20 @@ import json
 import math
 import os
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from pydantic import BaseModel, ConfigDict
+from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, ConfigDict, Field
 
 from .inference import canonical_sha256, load_model
 from .feature_registry import FeatureRegistry
+from .operations import DEFAULT_PLAYBOOKS, RiskBand, RiskPolicy, portfolio_summary, priority_customers
+from .retention_store import RetentionTaskStore
+
+
+STATIC_DIRECTORY = Path(__file__).resolve().parent / "static"
 
 
 class Prediction(BaseModel):
@@ -34,6 +41,20 @@ class PredictionPage(BaseModel):
     offset: int
     limit: int
     items: list[Prediction]
+
+
+class RetentionTaskCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    prediction_id: str = Field(min_length=1, max_length=128)
+    owner: str = Field(min_length=1, max_length=80)
+    playbook: str | None = Field(default=None, min_length=1, max_length=120)
+
+
+class RetentionTaskStatusUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["OPEN", "IN_PROGRESS", "COMPLETED", "DISMISSED"]
 
 
 class PredictionRepository:
@@ -99,6 +120,7 @@ def create_app(
     predictions_path: Path | None = None,
     *,
     feature_registry_path: Path | None = None,
+    task_database_path: Path | None = None,
 ) -> FastAPI:
     configured_model = model_path or Path(os.getenv("CHURN_MODEL_PATH", "build/demo/model/baseline.json"))
     configured_predictions = predictions_path or Path(
@@ -107,6 +129,9 @@ def create_app(
     configured_registry = feature_registry_path or Path(
         os.getenv("CHURN_FEATURE_REGISTRY_PATH", "config/feature-registry.json")
     )
+    configured_task_database = task_database_path or Path(
+        os.getenv("CHURN_TASK_DATABASE_PATH", "build/operations/retention-tasks.sqlite3")
+    )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -114,15 +139,26 @@ def create_app(
             configured_model, configured_predictions
         )
         app.state.feature_registry = FeatureRegistry.from_file(configured_registry)
+        app.state.task_store = RetentionTaskStore(configured_task_database)
         yield
+        app.state.task_store.close()
         app.state.repository = None
         app.state.feature_registry = None
+        app.state.task_store = None
 
     app = FastAPI(
-        title="Customer Churn Prediction Query API",
+        title="Customer Retention Operations Platform",
         version="1.0.0",
         lifespan=lifespan,
     )
+
+    @app.get("/", include_in_schema=False)
+    def root() -> RedirectResponse:
+        return RedirectResponse("/console")
+
+    @app.get("/console", include_in_schema=False)
+    def console() -> FileResponse:
+        return FileResponse(STATIC_DIRECTORY / "index.html")
 
     @app.get("/health")
     def health(request: Request) -> dict[str, Any]:
@@ -149,6 +185,28 @@ def create_app(
     @app.get("/v1/features")
     def feature_registry(request: Request) -> dict[str, Any]:
         return request.app.state.feature_registry.to_public_dict()
+
+    @app.get("/v1/portfolio/summary")
+    def portfolio(request: Request) -> dict[str, Any]:
+        repository = _repository(request)
+        return {
+            **portfolio_summary(repository.rows),
+            "model_sha256": repository.model_sha256,
+            "retention_tasks": request.app.state.task_store.status_counts(),
+        }
+
+    @app.get("/v1/portfolio/priority")
+    def priority_queue(
+        request: Request,
+        risk_band: RiskBand | None = None,
+        limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    ) -> dict[str, Any]:
+        items = priority_customers(
+            _repository(request).rows,
+            risk_band=risk_band,
+            limit=limit,
+        )
+        return {"count": len(items), "limit": limit, "risk_band": risk_band, "items": items}
 
     @app.get("/v1/predictions", response_model=PredictionPage)
     def list_predictions(
@@ -187,6 +245,50 @@ def create_app(
         if rows is None:
             raise HTTPException(status_code=404, detail="customer predictions not found")
         return rows[:limit]
+
+    @app.get("/v1/retention/tasks")
+    def list_retention_tasks(
+        request: Request,
+        status: Literal["OPEN", "IN_PROGRESS", "COMPLETED", "DISMISSED"] | None = None,
+        limit: Annotated[int, Query(ge=1, le=500)] = 100,
+    ) -> dict[str, Any]:
+        items = request.app.state.task_store.list(status=status, limit=limit)
+        return {"count": len(items), "limit": limit, "status": status, "items": items}
+
+    @app.post("/v1/retention/tasks", status_code=201)
+    def create_retention_task(
+        command: RetentionTaskCreate,
+        request: Request,
+    ) -> dict[str, Any]:
+        repository = _repository(request)
+        prediction = repository.by_id.get(command.prediction_id)
+        if prediction is None:
+            raise HTTPException(status_code=404, detail="prediction not found")
+        band = RiskPolicy().classify(float(prediction["churn_probability"]))
+        try:
+            return request.app.state.task_store.create(
+                prediction_id=command.prediction_id,
+                customer_key=prediction["customer_key"],
+                model_sha256=repository.model_sha256,
+                risk_band=band.value,
+                owner=command.owner.strip(),
+                playbook=(command.playbook or DEFAULT_PLAYBOOKS[band]).strip(),
+            )
+        except ValueError as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+
+    @app.patch("/v1/retention/tasks/{task_id}/status")
+    def update_retention_task(
+        task_id: str,
+        command: RetentionTaskStatusUpdate,
+        request: Request,
+    ) -> dict[str, Any]:
+        try:
+            return request.app.state.task_store.update_status(task_id, command.status)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="retention task not found") from error
+
+    app.mount("/console/assets", StaticFiles(directory=STATIC_DIRECTORY), name="console-assets")
 
     return app
 

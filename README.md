@@ -3,9 +3,9 @@
 [![CI](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/ci.yml)
 [![Portable smoke](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/portable-smoke.yml/badge.svg)](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/portable-smoke.yml)
 
-本项目实现从匿名行为事件、时间点特征快照、模型训练与评估，到批量推理、查询服务和漂移监控的完整机器学习数据链路。设计重点是防止标签泄漏、保证训练可复现，并让数据版本、模型版本和预测结果能够追溯。
+本项目实现从匿名行为事件、时间点特征快照、模型训练与评估，到批量推理、漂移监控和留存运营闭环的完整数据链路。平台将模型结果转化为风险分层、客户优先队列和可跟踪的留存任务，同时保留数据版本、模型版本与预测批次的完整追溯关系。
 
-当前版本：`v0.12.0`。版本变更见 [CHANGELOG](CHANGELOG.md)，版本摘要见 [VERSION_LOG](VERSION_LOG.md)。
+当前版本：`v1.0.0`。版本变更见 [CHANGELOG](CHANGELOG.md)，版本摘要见 [VERSION_LOG](VERSION_LOG.md)。
 
 ## 当前进度
 
@@ -28,6 +28,9 @@
 - [x] 提供环境诊断、建模、推理、监控和模型对比的一键跨平台入口。
 - [x] 提供自动创建、复用和更新项目隔离环境的跨平台启动器。
 - [x] 增加版本化特征注册表、查询接口和离线/在线一致性核对报告。
+- [x] 增加客户组合概览、风险分层和高风险客户优先队列。
+- [x] 增加留存运营任务创建、状态流转与模型血缘留存。
+- [x] 提供重新设计的客户留存运营工作台。
 
 ## 事件模型
 
@@ -69,13 +72,13 @@ python scripts/bootstrap.py
 
 各阶段也可通过安装后生成的 `generate-customer-events`、`build-customer-features`、`train-churn-baseline`、`predict-customer-churn`、`monitor-churn-drift`、`monitor-churn-performance`、`compare-churn-models` 和 `check-feature-parity` 命令独立运行。
 
-生成演示产物后可启动只读预测查询服务：
+生成演示产物后可启动客户留存运营平台：
 
 ```powershell
 ./scripts/api-up.ps1
 ```
 
-服务默认读取 `build/demo/model/baseline.json` 和 `build/demo/predictions/candidate.ndjson`，接口说明见 [预测查询 API](docs/prediction-query-api.md)。
+服务默认读取 `build/demo/model/baseline.json` 和 `build/demo/predictions/candidate.ndjson`，运营任务保存到 `build/operations/retention-tasks.sqlite3`。访问 `http://127.0.0.1:8000/console` 打开运营工作台；接口说明见 [预测与留存运营 API](docs/prediction-query-api.md)。
 
 特征注册表位于 `config/feature-registry.json`，查询服务通过 `GET /v1/features` 返回注册表版本、指纹和十项模型特征。对两份同一时间点的离线与在线特征执行一致性核对：
 
@@ -97,7 +100,7 @@ check-feature-parity `
 
 ## 设计边界
 
-当前版本完成事件数据基础、时间点特征快照、未来流失标签、按时间切分的逻辑回归基线和幂等批量推理。分类阈值只在验证集选择，测试集仅做最终评估；预测记录使用模型哈希、客户键和快照时间生成稳定 ID，清单保存输入、模型和输出 SHA-256。仓库中的自动化测试数据用于验证实现，不作为业务模型效果声明。
+当前版本完成事件数据基础、时间点特征快照、未来流失标签、按时间切分的逻辑回归基线、幂等批量推理和留存运营闭环。分类阈值只在验证集选择，测试集仅做最终评估；预测记录使用模型哈希、客户键和快照时间生成稳定 ID，清单保存输入、模型和输出 SHA-256。运营任务保存创建时的模型指纹和预测编号，模型批次更新后仍可追溯决策来源。仓库中的自动化验证数据不作为业务模型效果声明。
 
 漂移报告按特征输出 PSI，并检查平均预测概率和正例率变化。报告只保存聚合结果和规范化输入指纹；漂移告警不等同于模型效果衰减结论。
 
@@ -111,7 +114,8 @@ check-feature-parity `
 - [隔离运行时启动器](docs/portable-runtime.md)
 - [架构设计](docs/architecture.md)
 - [特征与预测漂移监控](docs/drift-monitoring.md)
-- [预测查询 API](docs/prediction-query-api.md)
+- [预测与留存运营 API](docs/prediction-query-api.md)
+- [留存运营工作台](docs/retention-operations.md)
 - [延迟标签模型效果监控](docs/model-performance-monitoring.md)
 - [Champion/Challenger 模型对比](docs/model-comparison.md)
 - [特征注册表与一致性核对](docs/feature-registry-parity.md)

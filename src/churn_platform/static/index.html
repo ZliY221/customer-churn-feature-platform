@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="客户留存运营工作台">
+  <title>客户留存运营工作台</title>
+  <link rel="stylesheet" href="/console/assets/styles.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand"><span>R</span><div><strong>Retention</strong><small>客户留存运营</small></div></div>
+    <nav>
+      <a class="active" href="#overview">组合概览</a>
+      <a href="#priority">优先队列</a>
+      <a href="#tasks">运营任务</a>
+    </nav>
+    <div class="lineage"><i></i><div><small>数据状态</small><strong id="lineage-status">正在连接</strong></div></div>
+  </aside>
+
+  <main>
+    <header id="overview">
+      <div><p class="overline">RETENTION OPERATIONS</p><h1>客户留存运营工作台</h1><p class="subtitle">从风险识别到运营跟进的统一视图</p></div>
+      <button class="outline" id="refresh-button">刷新数据</button>
+    </header>
+
+    <p class="error" id="error-banner" hidden></p>
+
+    <section class="metrics" aria-label="客户组合指标">
+      <article><span>客户快照</span><strong id="customer-count">—</strong><small id="snapshot-time">等待加载</small></article>
+      <article><span>预测流失客户</span><strong id="predicted-count">—</strong><small>按当前决策阈值</small></article>
+      <article><span>平均流失概率</span><strong id="average-probability">—</strong><small>当前预测批次</small></article>
+      <article><span>进行中任务</span><strong id="active-task-count">—</strong><small>待执行与处理中</small></article>
+    </section>
+
+    <section class="workspace-grid">
+      <article class="panel risk-panel">
+        <div class="panel-head"><div><p class="overline">RISK DISTRIBUTION</p><h2>风险分层</h2></div><span>客户数</span></div>
+        <div class="risk-list" id="risk-list"></div>
+      </article>
+      <article class="panel model-panel">
+        <div class="panel-head"><div><p class="overline">MODEL LINEAGE</p><h2>当前模型</h2></div></div>
+        <dl>
+          <div><dt>模型版本</dt><dd id="model-version">—</dd></div>
+          <div><dt>算法</dt><dd id="model-algorithm">—</dd></div>
+          <div><dt>决策阈值</dt><dd id="model-threshold">—</dd></div>
+          <div><dt>特征数量</dt><dd id="model-features">—</dd></div>
+        </dl>
+        <p class="hash" id="model-hash">—</p>
+      </article>
+    </section>
+
+    <section class="panel" id="priority">
+      <div class="panel-head table-heading"><div><p class="overline">PRIORITY QUEUE</p><h2>高风险客户优先队列</h2></div><select id="risk-filter" aria-label="风险等级筛选"><option value="">全部等级</option><option value="CRITICAL">极高风险</option><option value="HIGH">高风险</option><option value="WATCH">关注</option><option value="STABLE">稳定</option></select></div>
+      <div class="table-scroll"><table><thead><tr><th>匿名客户</th><th>流失概率</th><th>风险等级</th><th>建议策略</th><th>操作</th></tr></thead><tbody id="priority-body"></tbody></table></div>
+    </section>
+
+    <section class="panel" id="tasks">
+      <div class="panel-head table-heading"><div><p class="overline">ACTION TRACKING</p><h2>运营任务</h2></div><span id="task-total">0 条</span></div>
+      <div class="task-board" id="task-board"></div>
+    </section>
+  </main>
+
+  <dialog id="task-dialog">
+    <form method="dialog" id="task-form">
+      <div class="dialog-head"><div><p class="overline">CREATE ACTION</p><h2>创建留存任务</h2></div><button value="cancel" class="icon-button" aria-label="关闭">×</button></div>
+      <input type="hidden" id="prediction-id">
+      <label>负责人<input id="task-owner" required maxlength="80" placeholder="例如：retention-team"></label>
+      <label>执行策略<input id="task-playbook" maxlength="120"></label>
+      <div class="dialog-actions"><button value="cancel" class="outline">取消</button><button value="default" id="task-submit">创建任务</button></div>
+    </form>
+  </dialog>
+
+  <script type="module" src="/console/assets/app.js"></script>
+</body>
+</html>
+

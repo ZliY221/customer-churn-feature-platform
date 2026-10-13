@@ -19,13 +19,14 @@ class PredictionApiTests(unittest.TestCase):
         run_demo(cls.root)
         cls.model = cls.root / "model" / "baseline.json"
         cls.predictions = cls.root / "predictions" / "candidate.ndjson"
+        cls.task_database = cls.root / "operations" / "retention-tasks.sqlite3"
 
     @classmethod
     def tearDownClass(cls) -> None:
         cls.temporary.cleanup()
 
     def test_health_and_model_metadata_expose_lineage(self) -> None:
-        with TestClient(create_app(self.model, self.predictions)) as client:
+        with TestClient(create_app(self.model, self.predictions, task_database_path=self.task_database)) as client:
             health = client.get("/health")
             metadata = client.get("/v1/model")
             registry = client.get("/v1/features")
@@ -39,7 +40,7 @@ class PredictionApiTests(unittest.TestCase):
         self.assertEqual(64, len(registry.json()["registry_sha256"]))
 
     def test_prediction_queries_are_bounded_and_not_found_is_explicit(self) -> None:
-        with TestClient(create_app(self.model, self.predictions)) as client:
+        with TestClient(create_app(self.model, self.predictions, task_database_path=self.task_database)) as client:
             page = client.get("/v1/predictions", params={"limit": 5, "offset": 2})
             first = page.json()["items"][0]
             by_id = client.get(f"/v1/predictions/{first['prediction_id']}")
@@ -51,6 +52,42 @@ class PredictionApiTests(unittest.TestCase):
         self.assertEqual(first["customer_key"], by_customer.json()[0]["customer_key"])
         self.assertEqual(422, invalid.status_code)
         self.assertEqual(404, missing.status_code)
+
+    def test_operations_console_and_retention_workflow(self) -> None:
+        with TestClient(
+            create_app(self.model, self.predictions, task_database_path=self.task_database)
+        ) as client:
+            console = client.get("/console")
+            styles = client.get("/console/assets/styles.css")
+            summary = client.get("/v1/portfolio/summary")
+            priority = client.get("/v1/portfolio/priority", params={"limit": 5})
+            prediction = priority.json()["items"][0]
+            created = client.post(
+                "/v1/retention/tasks",
+                json={"prediction_id": prediction["prediction_id"], "owner": "retention-team"},
+            )
+            duplicate = client.post(
+                "/v1/retention/tasks",
+                json={"prediction_id": prediction["prediction_id"], "owner": "retention-team"},
+            )
+            updated = client.patch(
+                f"/v1/retention/tasks/{created.json()['task_id']}/status",
+                json={"status": "IN_PROGRESS"},
+            )
+            tasks = client.get("/v1/retention/tasks", params={"status": "IN_PROGRESS"})
+
+        self.assertEqual(200, console.status_code)
+        self.assertIn("客户留存运营工作台", console.text)
+        self.assertEqual(200, styles.status_code)
+        self.assertEqual(100, summary.json()["customer_count"])
+        self.assertEqual(5, priority.json()["count"])
+        probabilities = [float(item["churn_probability"]) for item in priority.json()["items"]]
+        self.assertEqual(sorted(probabilities, reverse=True), probabilities)
+        self.assertEqual(201, created.status_code)
+        self.assertEqual(prediction["recommended_playbook"], created.json()["playbook"])
+        self.assertEqual(409, duplicate.status_code)
+        self.assertEqual("IN_PROGRESS", updated.json()["status"])
+        self.assertEqual(1, tasks.json()["count"])
 
     def test_repository_rejects_model_lineage_mismatch(self) -> None:
         model = json.loads(self.model.read_text(encoding="utf-8"))

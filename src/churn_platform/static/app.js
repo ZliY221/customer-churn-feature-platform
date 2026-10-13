@@ -1,0 +1,120 @@
+const $ = selector => document.querySelector(selector)
+const state = { priority: [], tasks: [] }
+const bandNames = { CRITICAL: '极高风险', HIGH: '高风险', WATCH: '关注', STABLE: '稳定' }
+const statusNames = { OPEN: '待执行', IN_PROGRESS: '处理中', COMPLETED: '已完成', DISMISSED: '已关闭' }
+
+async function request(path, options) {
+  const response = await fetch(path, options)
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}))
+    throw new Error(body.detail || `请求失败：${response.status}`)
+  }
+  return response.json()
+}
+
+function percentage(value) { return `${(Number(value) * 100).toFixed(1)}%` }
+function customerLabel(key) { return `${key.slice(0, 8)}…${key.slice(-4)}` }
+
+function renderRisk(summary) {
+  const maximum = Math.max(...Object.values(summary.risk_bands), 1)
+  $('#risk-list').innerHTML = Object.entries(summary.risk_bands).map(([band, count]) => `
+    <div class="risk-row" data-band="${band}">
+      <span class="risk-name">${bandNames[band]}</span>
+      <div class="risk-track"><div class="risk-fill" style="width:${count / maximum * 100}%"></div></div>
+      <span class="risk-count">${count}</span>
+    </div>`).join('')
+}
+
+function renderPriority() {
+  $('#priority-body').innerHTML = state.priority.length ? state.priority.map(row => `
+    <tr>
+      <td title="${row.customer_key}">${customerLabel(row.customer_key)}</td>
+      <td class="probability">${percentage(row.churn_probability)}</td>
+      <td><span class="band ${row.risk_band}">${bandNames[row.risk_band]}</span></td>
+      <td>${row.recommended_playbook}</td>
+      <td><button class="create-task" data-id="${row.prediction_id}" data-playbook="${row.recommended_playbook}">创建任务</button></td>
+    </tr>`).join('') : '<tr><td colspan="5">当前筛选条件下没有客户</td></tr>'
+}
+
+function renderTasks() {
+  const statuses = ['OPEN', 'IN_PROGRESS', 'COMPLETED', 'DISMISSED']
+  $('#task-total').textContent = `${state.tasks.length} 条`
+  $('#task-board').innerHTML = statuses.map(status => {
+    const items = state.tasks.filter(task => task.status === status)
+    return `<div class="task-column"><h3><span>${statusNames[status]}</span><span>${items.length}</span></h3>${items.map(task => `
+      <article class="task-card">
+        <strong>${customerLabel(task.customer_key)}</strong>
+        <small>${task.playbook}</small><small>负责人：${task.owner}</small>
+        <select class="task-status" data-id="${task.task_id}" aria-label="更新任务状态">
+          ${statuses.map(option => `<option value="${option}" ${option === status ? 'selected' : ''}>${statusNames[option]}</option>`).join('')}
+        </select>
+      </article>`).join('')}</div>`
+  }).join('')
+}
+
+async function load() {
+  try {
+    const band = $('#risk-filter').value
+    const suffix = band ? `&risk_band=${band}` : ''
+    const [summary, model, priority, tasks] = await Promise.all([
+      request('/v1/portfolio/summary'), request('/v1/model'),
+      request(`/v1/portfolio/priority?limit=30${suffix}`), request('/v1/retention/tasks?limit=200'),
+    ])
+    $('#customer-count').textContent = summary.customer_count.toLocaleString()
+    $('#predicted-count').textContent = summary.predicted_churn_count.toLocaleString()
+    $('#average-probability').textContent = percentage(summary.average_churn_probability)
+    $('#active-task-count').textContent = (summary.retention_tasks.OPEN + summary.retention_tasks.IN_PROGRESS).toLocaleString()
+    $('#snapshot-time').textContent = `快照 ${summary.latest_as_of_time}`
+    $('#model-version').textContent = model.model_version
+    $('#model-algorithm').textContent = model.algorithm
+    $('#model-threshold').textContent = model.decision_threshold
+    $('#model-features').textContent = model.feature_columns.length
+    $('#model-hash').textContent = model.model_sha256
+    $('#lineage-status').textContent = '批次血缘已就绪'
+    $('.lineage i').classList.add('ready')
+    state.priority = priority.items
+    state.tasks = tasks.items
+    renderRisk(summary); renderPriority(); renderTasks()
+    $('#error-banner').hidden = true
+  } catch (error) {
+    $('#error-banner').textContent = error.message
+    $('#error-banner').hidden = false
+  }
+}
+
+document.addEventListener('click', event => {
+  const button = event.target.closest('.create-task')
+  if (!button) return
+  $('#prediction-id').value = button.dataset.id
+  $('#task-playbook').value = button.dataset.playbook
+  $('#task-owner').value = 'retention-team'
+  $('#task-dialog').showModal()
+})
+
+$('#task-form').addEventListener('submit', async event => {
+  if (event.submitter?.value === 'cancel') return
+  event.preventDefault()
+  try {
+    await request('/v1/retention/tasks', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prediction_id: $('#prediction-id').value, owner: $('#task-owner').value, playbook: $('#task-playbook').value }),
+    })
+    $('#task-dialog').close(); await load()
+  } catch (error) { $('#error-banner').textContent = error.message; $('#error-banner').hidden = false; $('#task-dialog').close() }
+})
+
+document.addEventListener('change', async event => {
+  if (event.target.id === 'risk-filter') { await load(); return }
+  if (!event.target.classList.contains('task-status')) return
+  try {
+    await request(`/v1/retention/tasks/${event.target.dataset.id}/status`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: event.target.value }),
+    })
+    await load()
+  } catch (error) { $('#error-banner').textContent = error.message; $('#error-banner').hidden = false }
+})
+
+$('#refresh-button').addEventListener('click', load)
+load()
+setInterval(load, 30000)
+
