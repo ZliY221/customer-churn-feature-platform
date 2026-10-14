@@ -16,11 +16,19 @@ concurrency:
 
 jobs:
   portable-model-flow:
-    name: ${{ matrix.os }} portable model flow
+    name: ${{ matrix.os }} / Python ${{ matrix.python }} portable model flow
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            python: "3.11"
+          - os: ubuntu-latest
+            python: "3.13"
+          - os: windows-latest
+            python: "3.11"
+          - os: macos-latest
+            python: "3.11"
     runs-on: ${{ matrix.os }}
     timeout-minutes: 12
     env:
@@ -28,10 +36,10 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-      - name: Set up Python 3.11
+      - name: Set up Python ${{ matrix.python }}
         uses: actions/setup-python@v6
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python }}
           cache: pip
           cache-dependency-path: pyproject.toml
       - name: Bootstrap the isolated runtime and run the public quickstart

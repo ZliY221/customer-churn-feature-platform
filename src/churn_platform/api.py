@@ -148,7 +148,7 @@ def create_app(
 
     app = FastAPI(
         title="Customer Retention Operations Platform",
-        version="1.5.1",
+        version="1.5.2",
         lifespan=lifespan,
     )
 

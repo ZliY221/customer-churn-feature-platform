@@ -20,7 +20,7 @@ class BootstrapTest(unittest.TestCase):
         signature = BOOTSTRAP._runtime_signature()
         self.assertEqual(signature["schema"], 1)
         self.assertEqual(signature["project"], "customer-churn-feature-platform")
-        self.assertEqual(signature["project_version"], "1.5.1")
+        self.assertEqual(signature["project_version"], "1.5.2")
         self.assertEqual(len(signature["checkout_key"]), 12)
         self.assertEqual(signature["install_extras"], "")
         self.assertEqual(len(signature["pyproject_sha256"]), 64)
@@ -47,6 +47,13 @@ class BootstrapTest(unittest.TestCase):
             self.assertEqual(BOOTSTRAP._read_marker(runtime_dir), signature)
             (runtime_dir / BOOTSTRAP.MARKER_NAME).write_text("{", encoding="utf-8")
             self.assertIsNone(BOOTSTRAP._read_marker(runtime_dir))
+
+    def test_runtime_environment_is_isolated_and_utf8(self) -> None:
+        environment = BOOTSTRAP._runtime_environment()
+        self.assertNotIn("PYTHONPATH", environment)
+        self.assertEqual(environment["PYTHONNOUSERSITE"], "1")
+        self.assertEqual(environment["PYTHONUTF8"], "1")
+        self.assertEqual(environment["PYTHONIOENCODING"], "utf-8")
 
     def test_portable_workflow_uses_the_public_bootstrap(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "portable-smoke.yml").read_text(
