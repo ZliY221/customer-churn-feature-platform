@@ -13,6 +13,7 @@
     <nav>
       <a class="active" href="#overview">组合概览</a>
       <a href="#priority">优先队列</a>
+      <a href="#workloads">责任视图</a>
       <a href="#tasks">运营任务</a>
     </nav>
     <div class="lineage"><i></i><div><small>数据状态</small><strong id="lineage-status">正在连接</strong></div></div>
@@ -53,6 +54,11 @@
     <section class="panel" id="priority">
       <div class="panel-head table-heading"><div><p class="overline">PRIORITY QUEUE</p><h2>高风险客户优先队列</h2></div><select id="risk-filter" aria-label="风险等级筛选"><option value="">全部等级</option><option value="CRITICAL">极高风险</option><option value="HIGH">高风险</option><option value="WATCH">关注</option><option value="STABLE">稳定</option></select></div>
       <div class="table-scroll"><table><thead><tr><th>匿名客户</th><th>流失概率</th><th>风险等级</th><th>建议策略</th><th>操作</th></tr></thead><tbody id="priority-body"></tbody></table></div>
+    </section>
+
+    <section class="panel" id="workloads">
+      <div class="panel-head"><div><p class="overline">OWNER WORKLOAD</p><h2>负责人任务负载</h2></div><span id="workload-total">0 位负责人</span></div>
+      <div class="workload-grid" id="workload-grid"><p class="empty-state">等待任务数据</p></div>
     </section>
 
     <section class="panel" id="tasks">

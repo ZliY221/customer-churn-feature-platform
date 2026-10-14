@@ -53,6 +53,15 @@ function renderTasks(eventCount = 0) {
   }).join('')
 }
 
+function renderWorkloads(response) {
+  $('#workload-total').textContent = `${response.owner_count} 位负责人 · ${response.active_task_count} 条活跃任务`
+  $('#workload-grid').innerHTML = response.items.length ? response.items.map(item => `
+    <article class="workload-card">
+      <strong>${item.owner}</strong><b>${item.active_count}</b><small>待执行 ${item.open_count} · 处理中 ${item.in_progress_count}</small>
+      <span>极高风险 ${item.critical_count} · 高风险 ${item.high_count}</span>
+    </article>`).join('') : '<p class="empty-state">当前没有活跃任务</p>'
+}
+
 async function load() {
   try {
     const band = $('#risk-filter').value
@@ -60,9 +69,9 @@ async function load() {
     const taskQuery = new URLSearchParams({ limit: '200' })
     if ($('#task-risk-filter').value) taskQuery.set('risk_band', $('#task-risk-filter').value)
     if ($('#task-owner-filter').value) taskQuery.set('owner', $('#task-owner-filter').value)
-    const [summary, model, priority, tasks] = await Promise.all([
+    const [summary, model, priority, tasks, workloads] = await Promise.all([
       request('/v1/portfolio/summary'), request('/v1/model'),
-      request(`/v1/portfolio/priority?limit=30${suffix}`), request(`/v1/retention/tasks?${taskQuery}`),
+      request(`/v1/portfolio/priority?limit=30${suffix}`), request(`/v1/retention/tasks?${taskQuery}`), request('/v1/retention/workloads'),
     ])
     $('#customer-count').textContent = summary.customer_count.toLocaleString()
     $('#predicted-count').textContent = summary.predicted_churn_count.toLocaleString()
@@ -84,7 +93,7 @@ async function load() {
       $('#task-owner-filter').replaceChildren(new Option('全部负责人', ''), ...owners.map(owner => new Option(owner, owner)))
       $('#task-owner-filter').value = selectedOwner
     }
-    renderRisk(summary); renderPriority(); renderTasks(summary.retention_event_count)
+    renderRisk(summary); renderPriority(); renderWorkloads(workloads); renderTasks(summary.retention_event_count)
     $('#error-banner').hidden = true
   } catch (error) {
     $('#error-banner').textContent = error.message

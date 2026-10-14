@@ -57,7 +57,22 @@ class RetentionOperationsTests(unittest.TestCase):
             self.assertEqual("OPEN", events[1]["from_status"])
             self.assertEqual("COMPLETED", events[1]["to_status"])
             self.assertEqual(2, reopened.event_count())
+            self.assertEqual([], reopened.owner_workloads())
             reopened.close()
+
+    def test_owner_workloads_prioritize_high_risk_active_tasks(self) -> None:
+        with TemporaryDirectory() as directory:
+            store = RetentionTaskStore(Path(directory) / "tasks.sqlite3")
+            store.create(prediction_id="pred-1", customer_key="one", model_sha256="a" * 64,
+                         risk_band="HIGH", owner="team-b", playbook="call")
+            first = store.create(prediction_id="pred-2", customer_key="two", model_sha256="a" * 64,
+                                 risk_band="CRITICAL", owner="team-a", playbook="call")
+            store.update_status(first["task_id"], "IN_PROGRESS")
+            workloads = store.owner_workloads()
+            self.assertEqual(["team-a", "team-b"], [item["owner"] for item in workloads])
+            self.assertEqual(1, workloads[0]["critical_count"])
+            self.assertEqual(1, workloads[0]["in_progress_count"])
+            store.close()
 
 
 if __name__ == "__main__":

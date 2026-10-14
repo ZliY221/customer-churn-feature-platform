@@ -148,7 +148,7 @@ def create_app(
 
     app = FastAPI(
         title="Customer Retention Operations Platform",
-        version="1.4.1",
+        version="1.5.1",
         lifespan=lifespan,
     )
 
@@ -266,6 +266,15 @@ def create_app(
             "limit": limit,
             "status": status,
             "filters": {"status": status, "risk_band": risk_band, "owner": owner},
+            "items": items,
+        }
+
+    @app.get("/v1/retention/workloads")
+    def retention_workloads(request: Request) -> dict[str, Any]:
+        items = request.app.state.task_store.owner_workloads()
+        return {
+            "owner_count": len(items),
+            "active_task_count": sum(item["active_count"] for item in items),
             "items": items,
         }
 

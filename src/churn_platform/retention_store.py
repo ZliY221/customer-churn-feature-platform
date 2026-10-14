@@ -167,3 +167,21 @@ class RetentionTaskStore:
         observed = {str(row["status"]): int(row["count"]) for row in rows}
         return {status: observed.get(status, 0) for status in sorted(TASK_STATUSES)}
 
+    def owner_workloads(self) -> list[dict[str, Any]]:
+        """Summarize active task volume and risk mix for each owner."""
+        rows = self.connection.execute(
+            """
+            SELECT owner,
+                   COUNT(*) AS active_count,
+                   SUM(CASE WHEN status = 'OPEN' THEN 1 ELSE 0 END) AS open_count,
+                   SUM(CASE WHEN status = 'IN_PROGRESS' THEN 1 ELSE 0 END) AS in_progress_count,
+                   SUM(CASE WHEN risk_band = 'CRITICAL' THEN 1 ELSE 0 END) AS critical_count,
+                   SUM(CASE WHEN risk_band = 'HIGH' THEN 1 ELSE 0 END) AS high_count
+            FROM retention_tasks
+            WHERE status IN ('OPEN', 'IN_PROGRESS')
+            GROUP BY owner
+            ORDER BY critical_count DESC, high_count DESC, active_count DESC, owner
+            """
+        ).fetchall()
+        return [dict(row) for row in rows]
+

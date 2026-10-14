@@ -1,6 +1,6 @@
 # 用户使用指南
 
-适用版本：`v1.4.1`
+适用版本：`v1.5.1`
 
 本指南随项目版本同步更新，覆盖当前版本的数据链路、模型监控和留存运营流程。首次使用建议先阅读仓库首页的项目简介、业务流程和常用入口，再按本指南启动完整链路。
 
@@ -38,7 +38,7 @@ python scripts/bootstrap.py
 - `COMPLETED`：已完成
 - `DISMISSED`：已关闭
 
-每次创建和状态变更都会写入独立事件流水。工作台显示累计变更记录数；点击任务卡片中的“查看时间线”可以直接查看创建时间和历次状态流转。任务看板支持按风险等级和负责人组合筛选。接口 `GET /v1/retention/tasks/{task_id}/events` 可供外部系统查询同一时间线。
+每次创建和状态变更都会写入独立事件流水。工作台显示累计变更记录数；点击任务卡片中的“查看时间线”可以直接查看创建时间和历次状态流转。任务看板支持按风险等级和负责人组合筛选。“负责人任务负载”区域汇总每位负责人的活跃任务、待执行、处理中、极高风险和高风险数量，便于平衡任务分配。接口 `GET /v1/retention/tasks/{task_id}/events` 可供外部系统查询同一时间线。
 
 ## 5. 主要接口
 
@@ -47,6 +47,7 @@ python scripts/bootstrap.py
 - `GET /v1/portfolio/priority`：按风险等级读取运营优先队列。
 - `POST /v1/retention/tasks`：创建留存任务。
 - `GET /v1/retention/tasks?risk_band=HIGH&owner=retention-team`：按风险与负责人筛选任务。
+- `GET /v1/retention/workloads`：查看负责人活跃任务与风险负载。
 - `PATCH /v1/retention/tasks/{task_id}/status`：更新任务状态。
 - `GET /v1/retention/tasks/{task_id}/events`：查询任务事件流水。
 
