@@ -4,22 +4,10 @@ param()
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $previousPythonPath = $env:PYTHONPATH
-$pythonExecutable = $null
-$pythonArguments = @()
-foreach ($candidate in @("python", "python3", "py")) {
-    if (Get-Command $candidate -ErrorAction SilentlyContinue) {
-        $candidateArguments = @()
-        if ($candidate -eq "py") { $candidateArguments = @("-3") }
-        & $candidate @candidateArguments -c `
-            "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)" *> $null
-        if ($LASTEXITCODE -eq 0) {
-            $pythonExecutable = $candidate
-            $pythonArguments = $candidateArguments
-            break
-        }
-    }
-}
-if (-not $pythonExecutable) { throw "Python 3.11 or newer was not found." }
+. (Join-Path $PSScriptRoot "python-runtime.ps1")
+$pythonRuntime = Resolve-ProjectPython -MinimumVersion "3.11" -RepoRoot $repoRoot
+$pythonExecutable = $pythonRuntime.Executable
+$pythonArguments = @($pythonRuntime.Arguments)
 try {
     $env:PYTHONPATH = Join-Path $repoRoot "src"
     & $pythonExecutable @pythonArguments `
