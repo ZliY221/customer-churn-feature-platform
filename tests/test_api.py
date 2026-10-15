@@ -148,6 +148,25 @@ class PredictionApiTests(unittest.TestCase):
             self.assertEqual(404, missing.status_code)
             self.assertEqual(422, empty.status_code)
 
+    def test_retention_tasks_support_bulk_status_progression(self) -> None:
+        with TemporaryDirectory() as directory:
+            database = Path(directory) / "tasks.sqlite3"
+            with TestClient(create_app(self.model, self.predictions, task_database_path=database)) as client:
+                prediction = client.get("/v1/portfolio/priority", params={"limit": 1}).json()["items"][0]
+                task = client.post("/v1/retention/tasks", json={
+                    "prediction_id": prediction["prediction_id"], "owner": "retention-team"
+                }).json()
+                response = client.patch("/v1/retention/tasks/bulk-status", json={
+                    "task_ids": [task["task_id"], task["task_id"]], "status": "IN_PROGRESS"
+                })
+                invalid = client.patch("/v1/retention/tasks/bulk-status", json={
+                    "task_ids": [], "status": "COMPLETED"
+                })
+            self.assertEqual(200, response.status_code)
+            self.assertEqual(1, response.json()["count"])
+            self.assertEqual("IN_PROGRESS", response.json()["items"][0]["status"])
+            self.assertEqual(422, invalid.status_code)
+
 
 if __name__ == "__main__":
     unittest.main()

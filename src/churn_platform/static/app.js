@@ -54,6 +54,8 @@ function renderTasks(eventCount = 0) {
   }).join('')
   $('#selected-task-count').textContent = `已选择 ${state.selectedTasks.size} 条任务`
   $('#bulk-assign-owner').disabled = state.selectedTasks.size === 0
+  $('#bulk-start-tasks').disabled = state.selectedTasks.size === 0
+  $('#bulk-complete-tasks').disabled = state.selectedTasks.size === 0
 }
 
 function renderWorkloads(response) {
@@ -150,6 +152,8 @@ document.addEventListener('change', async event => {
     else state.selectedTasks.delete(event.target.dataset.taskId)
     $('#selected-task-count').textContent = `已选择 ${state.selectedTasks.size} 条任务`
     $('#bulk-assign-owner').disabled = state.selectedTasks.size === 0
+    $('#bulk-start-tasks').disabled = state.selectedTasks.size === 0
+    $('#bulk-complete-tasks').disabled = state.selectedTasks.size === 0
     return
   }
   if (['risk-filter', 'task-risk-filter', 'task-owner-filter'].includes(event.target.id)) { await load(); return }
@@ -187,6 +191,20 @@ $('#bulk-assign-owner').addEventListener('click', async () => {
     state.selectedTasks.clear(); $('#bulk-task-owner').value = ''; await load()
   } catch (error) { $('#error-banner').textContent = error.message; $('#error-banner').hidden = false }
 })
+
+async function bulkUpdateStatus(status) {
+  if (state.selectedTasks.size === 0) return
+  try {
+    await request('/v1/retention/tasks/bulk-status', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task_ids: [...state.selectedTasks], status }),
+    })
+    state.selectedTasks.clear(); await load()
+  } catch (error) { $('#error-banner').textContent = error.message; $('#error-banner').hidden = false }
+}
+
+$('#bulk-start-tasks').addEventListener('click', () => bulkUpdateStatus('IN_PROGRESS'))
+$('#bulk-complete-tasks').addEventListener('click', () => bulkUpdateStatus('COMPLETED'))
 
 async function pollRetentionEvents() {
   if (state.polling || document.hidden) return

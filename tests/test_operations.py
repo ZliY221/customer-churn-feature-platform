@@ -99,6 +99,26 @@ class RetentionOperationsTests(unittest.TestCase):
             self.assertEqual("shared-team", store.get(first["task_id"])["owner"])
             store.close()
 
+    def test_bulk_status_update_is_atomic_deduplicated_and_audited(self) -> None:
+        with TemporaryDirectory() as directory:
+            store = RetentionTaskStore(Path(directory) / "tasks.sqlite3")
+            first = store.create(prediction_id="pred-c", customer_key="c", model_sha256="a" * 64,
+                                 risk_band="HIGH", owner="team-a", playbook="call")
+            second = store.create(prediction_id="pred-d", customer_key="d", model_sha256="a" * 64,
+                                  risk_band="WATCH", owner="team-b", playbook="message")
+            updated = store.update_statuses(
+                [first["task_id"], second["task_id"], first["task_id"]], "IN_PROGRESS"
+            )
+            self.assertEqual(2, len(updated))
+            self.assertEqual({"IN_PROGRESS"}, {item["status"] for item in updated})
+            event_count = len(store.events(first["task_id"]))
+            store.update_statuses([first["task_id"]], "IN_PROGRESS")
+            self.assertEqual(event_count, len(store.events(first["task_id"])))
+            with self.assertRaises(KeyError):
+                store.update_statuses([first["task_id"], "missing"], "COMPLETED")
+            self.assertEqual("IN_PROGRESS", store.get(first["task_id"])["status"])
+            store.close()
+
 
 if __name__ == "__main__":
     unittest.main()

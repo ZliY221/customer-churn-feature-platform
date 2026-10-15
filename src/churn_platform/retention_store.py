@@ -177,6 +177,39 @@ class RetentionTaskStore:
         self.connection.commit()
         return self.get(task_id)
 
+    def update_statuses(self, task_ids: list[str], status: str) -> list[dict[str, Any]]:
+        unique_ids = list(dict.fromkeys(task_ids))
+        if status not in TASK_STATUSES:
+            raise ValueError("unsupported retention task status")
+        if not unique_ids or len(unique_ids) > 100:
+            raise ValueError("task_ids must contain between 1 and 100 unique tasks")
+        placeholders = ",".join("?" for _ in unique_ids)
+        current_rows = self.connection.execute(
+            f"SELECT * FROM retention_tasks WHERE task_id IN ({placeholders})", unique_ids
+        ).fetchall()
+        current_by_id = {row["task_id"]: dict(row) for row in current_rows}
+        missing = [task_id for task_id in unique_ids if task_id not in current_by_id]
+        if missing:
+            raise KeyError(missing[0])
+        now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        with self.connection:
+            for task_id in unique_ids:
+                current = current_by_id[task_id]
+                if current["status"] == status:
+                    continue
+                self.connection.execute(
+                    "UPDATE retention_tasks SET status = ?, updated_at = ? WHERE task_id = ?",
+                    (status, now, task_id),
+                )
+                self.connection.execute(
+                    """INSERT INTO retention_task_events (
+                           task_id, event_type, from_status, to_status, occurred_at,
+                           from_owner, to_owner
+                       ) VALUES (?, 'STATUS_CHANGED', ?, ?, ?, ?, ?)""",
+                    (task_id, current["status"], status, now, current["owner"], current["owner"]),
+                )
+        return [self.get(task_id) for task_id in unique_ids]
+
     def update_owners(self, task_ids: list[str], owner: str) -> list[dict[str, Any]]:
         normalized = owner.strip()
         unique_ids = list(dict.fromkeys(task_ids))

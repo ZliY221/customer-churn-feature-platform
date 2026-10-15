@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/ci.yml)
 [![Portable smoke](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/portable-smoke.yml/badge.svg)](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/portable-smoke.yml)
-![Version](https://img.shields.io/badge/version-v1.8.1-285846)
+![Version](https://img.shields.io/badge/version-v1.9.0-285846)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776ab)
 ![API](https://img.shields.io/badge/API-FastAPI-05998b)
 
@@ -80,6 +80,7 @@ flowchart LR
 - 支持创建留存任务、负责人分派、状态流转和重复保护。
 - 支持按风险与负责人筛选任务，并查看完整状态时间线。
 - 支持勾选多条任务批量重新分派，逐条保留负责人变更记录。
+- 支持批量开始或完成留存任务，并为每条状态变化保留审计时间线。
 
 ### 数据与服务
 
@@ -131,4 +132,4 @@ docs/                    架构、模型和操作文档
 
 ## 版本与维护
 
-当前版本为 `v1.8.1`。每次发布同步维护[用户使用指南](docs/user-guide.md)、[版本记录](CHANGELOG.md)和[版本摘要](VERSION_LOG.md)。
+当前版本为 `v1.9.0`。每次发布同步维护[用户使用指南](docs/user-guide.md)、[版本记录](CHANGELOG.md)和[版本摘要](VERSION_LOG.md)。

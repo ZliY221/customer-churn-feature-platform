@@ -68,6 +68,12 @@ class RetentionTaskBulkOwnerUpdate(BaseModel):
     owner: str = Field(min_length=1, max_length=80)
 
 
+class RetentionTaskBulkStatusUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    task_ids: list[str] = Field(min_length=1, max_length=100)
+    status: Literal["OPEN", "IN_PROGRESS", "COMPLETED", "DISMISSED"]
+
+
 class PredictionRepository:
     def __init__(self, rows: list[dict[str, Any]], model: dict[str, Any]) -> None:
         self.model = model
@@ -159,7 +165,7 @@ def create_app(
 
     app = FastAPI(
         title="Customer Retention Operations Platform",
-        version="1.8.1",
+        version="1.9.0",
         lifespan=lifespan,
     )
 
@@ -362,6 +368,19 @@ def create_app(
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
         return {"count": len(items), "owner": command.owner.strip(), "items": items}
+
+    @app.patch("/v1/retention/tasks/bulk-status")
+    def update_retention_task_statuses(
+        command: RetentionTaskBulkStatusUpdate,
+        request: Request,
+    ) -> dict[str, Any]:
+        try:
+            items = request.app.state.task_store.update_statuses(command.task_ids, command.status)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="retention task not found") from error
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        return {"count": len(items), "status": command.status, "items": items}
 
     @app.get("/v1/retention/tasks/{task_id}/events")
     def retention_task_events(task_id: str, request: Request) -> dict[str, Any]:
