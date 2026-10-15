@@ -184,7 +184,10 @@ async function confirmBulkOperation(payload, label) {
   const preview = await request('/v1/retention/tasks/bulk-preview', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
   })
-  const message = `预览：将更新 ${preview.changed_count} 条，跳过 ${preview.unchanged_count} 条`
+  const riskDetail = Object.entries(preview.changed_by_risk_band)
+    .filter(([, count]) => count > 0)
+    .map(([band, count]) => `${bandNames[band]} ${count} 条`).join('、')
+  const message = `预览：将更新 ${preview.changed_count} 条，跳过 ${preview.unchanged_count} 条${riskDetail ? ` · ${riskDetail}` : ''}`
   $('#bulk-action-result').textContent = message
   if (preview.changed_count === 0) return false
   return window.confirm(`${label}\n${message}\n确认继续执行吗？`)

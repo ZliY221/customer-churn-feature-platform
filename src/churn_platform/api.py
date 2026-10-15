@@ -178,7 +178,7 @@ def create_app(
 
     app = FastAPI(
         title="Customer Retention Operations Platform",
-        version="1.11.0",
+        version="1.12.0",
         lifespan=lifespan,
     )
 
@@ -406,6 +406,14 @@ def create_app(
             if (normalized_owner is not None and item["owner"] != normalized_owner)
             or (command.status is not None and item["status"] != command.status)
         ]
+        changed_by_risk_band = {
+            band.value: sum(item["risk_band"] == band.value for item in changed_items)
+            for band in RiskBand
+        }
+        changed_by_status = {
+            status: sum(item["status"] == status for item in changed_items)
+            for status in ("OPEN", "IN_PROGRESS", "COMPLETED", "DISMISSED")
+        }
         return {
             "count": len(items),
             "changed_count": len(changed_items),
@@ -416,6 +424,8 @@ def create_app(
             "status_changed_count": sum(
                 command.status is not None and item["status"] != command.status for item in items
             ),
+            "changed_by_risk_band": changed_by_risk_band,
+            "changed_by_status": changed_by_status,
         }
 
     @app.patch("/v1/retention/tasks/bulk-status")

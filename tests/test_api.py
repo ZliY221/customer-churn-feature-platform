@@ -159,6 +159,12 @@ class PredictionApiTests(unittest.TestCase):
                 })
             self.assertEqual(2, preview.json()["changed_count"])
             self.assertEqual(0, preview.json()["unchanged_count"])
+            self.assertEqual(
+                2,
+                sum(preview.json()["changed_by_risk_band"].values()),
+            )
+            self.assertEqual({"CRITICAL", "HIGH", "WATCH", "STABLE"}, set(preview.json()["changed_by_risk_band"]))
+            self.assertEqual(2, preview.json()["changed_by_status"]["OPEN"])
             self.assertEqual(200, response.status_code)
             self.assertEqual(2, response.json()["count"])
             self.assertEqual(2, response.json()["changed_count"])
@@ -170,6 +176,7 @@ class PredictionApiTests(unittest.TestCase):
             self.assertEqual(422, empty.status_code)
             self.assertEqual(0, repeated_preview.json()["changed_count"])
             self.assertEqual(2, repeated_preview.json()["unchanged_count"])
+            self.assertEqual(0, sum(repeated_preview.json()["changed_by_risk_band"].values()))
             self.assertEqual(404, missing_preview.status_code)
             self.assertEqual(422, invalid_preview.status_code)
 
