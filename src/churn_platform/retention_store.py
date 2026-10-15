@@ -48,6 +48,14 @@ class RetentionTaskStore:
                 ON retention_task_events(task_id, event_id);
             """
         )
+        event_columns = {
+            row["name"]
+            for row in self.connection.execute("PRAGMA table_info(retention_task_events)")
+        }
+        if "from_owner" not in event_columns:
+            self.connection.execute("ALTER TABLE retention_task_events ADD COLUMN from_owner TEXT")
+        if "to_owner" not in event_columns:
+            self.connection.execute("ALTER TABLE retention_task_events ADD COLUMN to_owner TEXT")
         self.connection.commit()
 
     def close(self) -> None:
@@ -87,9 +95,10 @@ class RetentionTaskStore:
             )
             self.connection.execute(
                 """INSERT INTO retention_task_events (
-                       task_id, event_type, from_status, to_status, occurred_at
-                   ) VALUES (?, 'CREATED', NULL, 'OPEN', ?)""",
-                (task_id, now),
+                       task_id, event_type, from_status, to_status, occurred_at,
+                       from_owner, to_owner
+                   ) VALUES (?, 'CREATED', NULL, 'OPEN', ?, NULL, ?)""",
+                (task_id, now, owner),
             )
             self.connection.commit()
         except sqlite3.IntegrityError as error:
@@ -138,9 +147,32 @@ class RetentionTaskStore:
             raise KeyError(task_id)
         self.connection.execute(
             """INSERT INTO retention_task_events (
-                   task_id, event_type, from_status, to_status, occurred_at
-               ) VALUES (?, 'STATUS_CHANGED', ?, ?, ?)""",
-            (task_id, current["status"], status, now),
+                   task_id, event_type, from_status, to_status, occurred_at,
+                   from_owner, to_owner
+               ) VALUES (?, 'STATUS_CHANGED', ?, ?, ?, ?, ?)""",
+            (task_id, current["status"], status, now, current["owner"], current["owner"]),
+        )
+        self.connection.commit()
+        return self.get(task_id)
+
+    def update_owner(self, task_id: str, owner: str) -> dict[str, Any]:
+        normalized = owner.strip()
+        if not normalized or len(normalized) > 80:
+            raise ValueError("owner must contain between 1 and 80 characters")
+        now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        current = self.get(task_id)
+        if current["owner"] == normalized:
+            return current
+        self.connection.execute(
+            "UPDATE retention_tasks SET owner = ?, updated_at = ? WHERE task_id = ?",
+            (normalized, now, task_id),
+        )
+        self.connection.execute(
+            """INSERT INTO retention_task_events (
+                   task_id, event_type, from_status, to_status, occurred_at,
+                   from_owner, to_owner
+               ) VALUES (?, 'OWNER_CHANGED', ?, ?, ?, ?, ?)""",
+            (task_id, current["status"], current["status"], now, current["owner"], normalized),
         )
         self.connection.commit()
         return self.get(task_id)
@@ -148,7 +180,8 @@ class RetentionTaskStore:
     def events(self, task_id: str) -> list[dict[str, Any]]:
         self.get(task_id)
         rows = self.connection.execute(
-            """SELECT event_id, task_id, event_type, from_status, to_status, occurred_at
+            """SELECT event_id, task_id, event_type, from_status, to_status, occurred_at,
+                      from_owner, to_owner
                FROM retention_task_events WHERE task_id = ? ORDER BY event_id""",
             (task_id,),
         ).fetchall()
@@ -159,6 +192,22 @@ class RetentionTaskStore:
             "SELECT COUNT(*) AS count FROM retention_task_events"
         ).fetchone()
         return int(row["count"])
+
+    def events_after(self, event_id: int, *, limit: int = 100) -> list[dict[str, Any]]:
+        """Return global task events after a cursor for lightweight live clients."""
+        rows = self.connection.execute(
+            """SELECT event_id, task_id, event_type, from_status, to_status, occurred_at,
+                      from_owner, to_owner
+               FROM retention_task_events WHERE event_id > ? ORDER BY event_id LIMIT ?""",
+            (event_id, limit),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+    def latest_event_id(self) -> int:
+        row = self.connection.execute(
+            "SELECT COALESCE(MAX(event_id), 0) AS event_id FROM retention_task_events"
+        ).fetchone()
+        return int(row["event_id"])
 
     def status_counts(self) -> dict[str, int]:
         rows = self.connection.execute(

@@ -1,5 +1,5 @@
 const $ = selector => document.querySelector(selector)
-const state = { priority: [], tasks: [] }
+const state = { priority: [], tasks: [], eventCursor: 0, polling: false }
 const bandNames = { CRITICAL: '极高风险', HIGH: '高风险', WATCH: '关注', STABLE: '稳定' }
 const statusNames = { OPEN: '待执行', IN_PROGRESS: '处理中', COMPLETED: '已完成', DISMISSED: '已关闭' }
 
@@ -44,7 +44,8 @@ function renderTasks(eventCount = 0) {
     return `<div class="task-column"><h3><span>${statusNames[status]}</span><span>${items.length}</span></h3>${items.map(task => `
       <article class="task-card">
         <strong>${customerLabel(task.customer_key)}</strong>
-        <small>${task.playbook}</small><small>负责人：${task.owner}</small>
+        <small>${task.playbook}</small>
+        <div class="task-owner"><input value="${task.owner}" maxlength="80" aria-label="任务负责人"><button class="save-owner" data-id="${task.task_id}" type="button">分派</button></div>
         <select class="task-status" data-id="${task.task_id}" aria-label="更新任务状态">
           ${statuses.map(option => `<option value="${option}" ${option === status ? 'selected' : ''}>${statusNames[option]}</option>`).join('')}
         </select>
@@ -77,6 +78,7 @@ async function load() {
     $('#predicted-count').textContent = summary.predicted_churn_count.toLocaleString()
     $('#average-probability').textContent = percentage(summary.average_churn_probability)
     $('#active-task-count').textContent = (summary.retention_tasks.OPEN + summary.retention_tasks.IN_PROGRESS).toLocaleString()
+    state.eventCursor = Math.max(state.eventCursor, summary.retention_latest_event_id || 0)
     $('#snapshot-time').textContent = `快照 ${summary.latest_as_of_time}`
     $('#model-version').textContent = model.model_version
     $('#model-algorithm').textContent = model.algorithm
@@ -118,8 +120,8 @@ document.addEventListener('click', async event => {
     $('#history-task-id').textContent = history.task_id
     $('#history-list').innerHTML = history.items.map(item => `
       <li><span>${new Date(item.occurred_at).toLocaleString('zh-CN', { hour12: false })}</span>
-      <strong>${item.event_type === 'CREATED' ? '创建任务' : '状态变更'}</strong>
-      <small>${item.from_status ? `${statusNames[item.from_status]} → ` : ''}${statusNames[item.to_status]}</small></li>`).join('')
+      <strong>${item.event_type === 'CREATED' ? '创建任务' : item.event_type === 'OWNER_CHANGED' ? '负责人变更' : '状态变更'}</strong>
+      <small>${item.event_type === 'OWNER_CHANGED' ? `${item.from_owner} → ${item.to_owner}` : `${item.from_status ? `${statusNames[item.from_status]} → ` : ''}${statusNames[item.to_status]}`}</small></li>`).join('')
     $('#history-dialog').showModal()
   } catch (error) {
     $('#error-banner').textContent = error.message
@@ -151,6 +153,36 @@ document.addEventListener('change', async event => {
 })
 
 $('#refresh-button').addEventListener('click', load)
+
+document.addEventListener('click', async event => {
+  const button = event.target.closest('.save-owner')
+  if (!button) return
+  const owner = button.parentElement.querySelector('input').value.trim()
+  try {
+    await request(`/v1/retention/tasks/${button.dataset.id}/owner`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ owner }),
+    })
+    await load()
+  } catch (error) { $('#error-banner').textContent = error.message; $('#error-banner').hidden = false }
+})
+
+async function pollRetentionEvents() {
+  if (state.polling || document.hidden) return
+  state.polling = true
+  try {
+    const events = await request(`/v1/retention/events?after_id=${state.eventCursor}&limit=100`)
+    state.eventCursor = events.next_after_id
+    $('#live-sync-status').classList.add('online')
+    $('#live-sync-status b').textContent = '实时同步已连接'
+    if (events.count) await load()
+  } catch (_) {
+    $('#live-sync-status').classList.remove('online')
+    $('#live-sync-status b').textContent = '实时同步重连中'
+  } finally {
+    state.polling = false
+  }
+}
+
 load()
-setInterval(load, 30000)
+setInterval(pollRetentionEvents, 2000)
 

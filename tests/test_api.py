@@ -74,15 +74,24 @@ class PredictionApiTests(unittest.TestCase):
                 f"/v1/retention/tasks/{created.json()['task_id']}/status",
                 json={"status": "IN_PROGRESS"},
             )
+            reassigned = client.patch(
+                f"/v1/retention/tasks/{created.json()['task_id']}/owner",
+                json={"owner": "customer-success"},
+            )
             events = client.get(
                 f"/v1/retention/tasks/{created.json()['task_id']}/events"
             )
             tasks = client.get("/v1/retention/tasks", params={"status": "IN_PROGRESS"})
             filtered = client.get(
                 "/v1/retention/tasks",
-                params={"risk_band": prediction["risk_band"], "owner": "retention-team"},
+                params={"risk_band": prediction["risk_band"], "owner": "customer-success"},
             )
             workloads = client.get("/v1/retention/workloads")
+            live_events = client.get("/v1/retention/events", params={"after_id": 0})
+            no_new_events = client.get(
+                "/v1/retention/events",
+                params={"after_id": live_events.json()["next_after_id"]},
+            )
 
         self.assertEqual(200, console.status_code)
         self.assertIn("客户留存运营工作台", console.text)
@@ -96,14 +105,18 @@ class PredictionApiTests(unittest.TestCase):
         self.assertEqual(prediction["recommended_playbook"], created.json()["playbook"])
         self.assertEqual(409, duplicate.status_code)
         self.assertEqual("IN_PROGRESS", updated.json()["status"])
-        self.assertEqual(2, events.json()["count"])
-        self.assertEqual("STATUS_CHANGED", events.json()["items"][1]["event_type"])
+        self.assertEqual("customer-success", reassigned.json()["owner"])
+        self.assertEqual(3, events.json()["count"])
+        self.assertEqual("OWNER_CHANGED", events.json()["items"][2]["event_type"])
         self.assertEqual(1, tasks.json()["count"])
         self.assertEqual(1, filtered.json()["count"])
-        self.assertEqual("retention-team", filtered.json()["filters"]["owner"])
+        self.assertEqual("customer-success", filtered.json()["filters"]["owner"])
         self.assertEqual(1, workloads.json()["owner_count"])
         self.assertEqual(1, workloads.json()["active_task_count"])
-        self.assertEqual("retention-team", workloads.json()["items"][0]["owner"])
+        self.assertEqual("customer-success", workloads.json()["items"][0]["owner"])
+        self.assertEqual(3, live_events.json()["count"])
+        self.assertEqual("OWNER_CHANGED", live_events.json()["items"][-1]["event_type"])
+        self.assertEqual(0, no_new_events.json()["count"])
 
     def test_repository_rejects_model_lineage_mismatch(self) -> None:
         model = json.loads(self.model.read_text(encoding="utf-8"))

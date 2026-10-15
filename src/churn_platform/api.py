@@ -57,6 +57,11 @@ class RetentionTaskStatusUpdate(BaseModel):
     status: Literal["OPEN", "IN_PROGRESS", "COMPLETED", "DISMISSED"]
 
 
+class RetentionTaskOwnerUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    owner: str = Field(min_length=1, max_length=80)
+
+
 class PredictionRepository:
     def __init__(self, rows: list[dict[str, Any]], model: dict[str, Any]) -> None:
         self.model = model
@@ -148,7 +153,7 @@ def create_app(
 
     app = FastAPI(
         title="Customer Retention Operations Platform",
-        version="1.5.2",
+        version="1.7.0",
         lifespan=lifespan,
     )
 
@@ -194,6 +199,7 @@ def create_app(
             "model_sha256": repository.model_sha256,
             "retention_tasks": request.app.state.task_store.status_counts(),
             "retention_event_count": request.app.state.task_store.event_count(),
+            "retention_latest_event_id": request.app.state.task_store.latest_event_id(),
         }
 
     @app.get("/v1/portfolio/priority")
@@ -278,6 +284,20 @@ def create_app(
             "items": items,
         }
 
+    @app.get("/v1/retention/events")
+    def retention_events(
+        request: Request,
+        after_id: Annotated[int, Query(ge=0)] = 0,
+        limit: Annotated[int, Query(ge=1, le=500)] = 100,
+    ) -> dict[str, Any]:
+        items = request.app.state.task_store.events_after(after_id, limit=limit)
+        return {
+            "count": len(items),
+            "after_id": after_id,
+            "next_after_id": items[-1]["event_id"] if items else after_id,
+            "items": items,
+        }
+
     @app.post("/v1/retention/tasks", status_code=201)
     def create_retention_task(
         command: RetentionTaskCreate,
@@ -310,6 +330,19 @@ def create_app(
             return request.app.state.task_store.update_status(task_id, command.status)
         except KeyError as error:
             raise HTTPException(status_code=404, detail="retention task not found") from error
+
+    @app.patch("/v1/retention/tasks/{task_id}/owner")
+    def update_retention_task_owner(
+        task_id: str,
+        command: RetentionTaskOwnerUpdate,
+        request: Request,
+    ) -> dict[str, Any]:
+        try:
+            return request.app.state.task_store.update_owner(task_id, command.owner)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="retention task not found") from error
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
 
     @app.get("/v1/retention/tasks/{task_id}/events")
     def retention_task_events(task_id: str, request: Request) -> dict[str, Any]:
