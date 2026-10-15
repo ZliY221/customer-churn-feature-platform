@@ -157,6 +157,9 @@ class PredictionApiTests(unittest.TestCase):
                 invalid_preview = client.post("/v1/retention/tasks/bulk-preview", json={
                     "task_ids": [task["task_id"] for task in tasks]
                 })
+                blank_owner_preview = client.post("/v1/retention/tasks/bulk-preview", json={
+                    "task_ids": [task["task_id"] for task in tasks], "owner": "   "
+                })
             self.assertEqual(2, preview.json()["changed_count"])
             self.assertEqual(0, preview.json()["unchanged_count"])
             self.assertEqual(
@@ -179,6 +182,7 @@ class PredictionApiTests(unittest.TestCase):
             self.assertEqual(0, sum(repeated_preview.json()["changed_by_risk_band"].values()))
             self.assertEqual(404, missing_preview.status_code)
             self.assertEqual(422, invalid_preview.status_code)
+            self.assertEqual(422, blank_owner_preview.status_code)
 
     def test_retention_tasks_support_bulk_status_progression(self) -> None:
         with TemporaryDirectory() as directory:

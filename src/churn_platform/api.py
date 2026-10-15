@@ -84,6 +84,8 @@ class RetentionTaskBulkPreview(BaseModel):
     def require_operation(self) -> "RetentionTaskBulkPreview":
         if self.owner is None and self.status is None:
             raise ValueError("owner or status is required")
+        if self.owner is not None and not self.owner.strip():
+            raise ValueError("owner must not be blank")
         return self
 
 
@@ -178,7 +180,7 @@ def create_app(
 
     app = FastAPI(
         title="Customer Retention Operations Platform",
-        version="1.12.0",
+        version="1.12.1",
         lifespan=lifespan,
     )
 
