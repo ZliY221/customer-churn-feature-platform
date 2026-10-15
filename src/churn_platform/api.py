@@ -62,6 +62,12 @@ class RetentionTaskOwnerUpdate(BaseModel):
     owner: str = Field(min_length=1, max_length=80)
 
 
+class RetentionTaskBulkOwnerUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    task_ids: list[str] = Field(min_length=1, max_length=100)
+    owner: str = Field(min_length=1, max_length=80)
+
+
 class PredictionRepository:
     def __init__(self, rows: list[dict[str, Any]], model: dict[str, Any]) -> None:
         self.model = model
@@ -153,7 +159,7 @@ def create_app(
 
     app = FastAPI(
         title="Customer Retention Operations Platform",
-        version="1.7.0",
+        version="1.8.0",
         lifespan=lifespan,
     )
 
@@ -343,6 +349,19 @@ def create_app(
             raise HTTPException(status_code=404, detail="retention task not found") from error
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @app.patch("/v1/retention/tasks/bulk-owner")
+    def update_retention_task_owners(
+        command: RetentionTaskBulkOwnerUpdate,
+        request: Request,
+    ) -> dict[str, Any]:
+        try:
+            items = request.app.state.task_store.update_owners(command.task_ids, command.owner)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="retention task not found") from error
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        return {"count": len(items), "owner": command.owner.strip(), "items": items}
 
     @app.get("/v1/retention/tasks/{task_id}/events")
     def retention_task_events(task_id: str, request: Request) -> dict[str, Any]:

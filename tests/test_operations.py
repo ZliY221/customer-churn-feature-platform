@@ -78,6 +78,24 @@ class RetentionOperationsTests(unittest.TestCase):
             self.assertEqual(1, workloads[0]["in_progress_count"])
             store.close()
 
+    def test_bulk_owner_update_is_deduplicated_and_audited(self) -> None:
+        with TemporaryDirectory() as directory:
+            store = RetentionTaskStore(Path(directory) / "tasks.sqlite3")
+            first = store.create(prediction_id="pred-a", customer_key="a", model_sha256="a" * 64,
+                                 risk_band="HIGH", owner="team-a", playbook="call")
+            second = store.create(prediction_id="pred-b", customer_key="b", model_sha256="a" * 64,
+                                  risk_band="WATCH", owner="team-b", playbook="message")
+            updated = store.update_owners(
+                [first["task_id"], second["task_id"], first["task_id"]], "shared-team"
+            )
+            self.assertEqual(2, len(updated))
+            self.assertEqual({"shared-team"}, {item["owner"] for item in updated})
+            self.assertEqual("OWNER_CHANGED", store.events(first["task_id"])[-1]["event_type"])
+            with self.assertRaises(KeyError):
+                store.update_owners([first["task_id"], "missing"], "another-team")
+            self.assertEqual("shared-team", store.get(first["task_id"])["owner"])
+            store.close()
+
 
 if __name__ == "__main__":
     unittest.main()

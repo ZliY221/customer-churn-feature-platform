@@ -177,6 +177,40 @@ class RetentionTaskStore:
         self.connection.commit()
         return self.get(task_id)
 
+    def update_owners(self, task_ids: list[str], owner: str) -> list[dict[str, Any]]:
+        normalized = owner.strip()
+        unique_ids = list(dict.fromkeys(task_ids))
+        if not normalized or len(normalized) > 80:
+            raise ValueError("owner must contain between 1 and 80 characters")
+        if not unique_ids or len(unique_ids) > 100:
+            raise ValueError("task_ids must contain between 1 and 100 unique tasks")
+        placeholders = ",".join("?" for _ in unique_ids)
+        current_rows = self.connection.execute(
+            f"SELECT * FROM retention_tasks WHERE task_id IN ({placeholders})", unique_ids
+        ).fetchall()
+        current_by_id = {row["task_id"]: dict(row) for row in current_rows}
+        missing = [task_id for task_id in unique_ids if task_id not in current_by_id]
+        if missing:
+            raise KeyError(missing[0])
+        now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        with self.connection:
+            for task_id in unique_ids:
+                current = current_by_id[task_id]
+                if current["owner"] == normalized:
+                    continue
+                self.connection.execute(
+                    "UPDATE retention_tasks SET owner = ?, updated_at = ? WHERE task_id = ?",
+                    (normalized, now, task_id),
+                )
+                self.connection.execute(
+                    """INSERT INTO retention_task_events (
+                           task_id, event_type, from_status, to_status, occurred_at,
+                           from_owner, to_owner
+                       ) VALUES (?, 'OWNER_CHANGED', ?, ?, ?, ?, ?)""",
+                    (task_id, current["status"], current["status"], now, current["owner"], normalized),
+                )
+        return [self.get(task_id) for task_id in unique_ids]
+
     def events(self, task_id: str) -> list[dict[str, Any]]:
         self.get(task_id)
         rows = self.connection.execute(

@@ -1,5 +1,5 @@
 const $ = selector => document.querySelector(selector)
-const state = { priority: [], tasks: [], eventCursor: 0, polling: false }
+const state = { priority: [], tasks: [], selectedTasks: new Set(), eventCursor: 0, polling: false }
 const bandNames = { CRITICAL: '极高风险', HIGH: '高风险', WATCH: '关注', STABLE: '稳定' }
 const statusNames = { OPEN: '待执行', IN_PROGRESS: '处理中', COMPLETED: '已完成', DISMISSED: '已关闭' }
 
@@ -43,7 +43,7 @@ function renderTasks(eventCount = 0) {
     const items = state.tasks.filter(task => task.status === status)
     return `<div class="task-column"><h3><span>${statusNames[status]}</span><span>${items.length}</span></h3>${items.map(task => `
       <article class="task-card">
-        <strong>${customerLabel(task.customer_key)}</strong>
+        <label class="task-select"><input type="checkbox" data-task-id="${task.task_id}" ${state.selectedTasks.has(task.task_id) ? 'checked' : ''}><strong>${customerLabel(task.customer_key)}</strong></label>
         <small>${task.playbook}</small>
         <div class="task-owner"><input value="${task.owner}" maxlength="80" aria-label="任务负责人"><button class="save-owner" data-id="${task.task_id}" type="button">分派</button></div>
         <select class="task-status" data-id="${task.task_id}" aria-label="更新任务状态">
@@ -52,6 +52,8 @@ function renderTasks(eventCount = 0) {
         <button class="task-history" data-id="${task.task_id}" type="button">查看时间线</button>
       </article>`).join('')}</div>`
   }).join('')
+  $('#selected-task-count').textContent = `已选择 ${state.selectedTasks.size} 条任务`
+  $('#bulk-assign-owner').disabled = state.selectedTasks.size === 0
 }
 
 function renderWorkloads(response) {
@@ -89,6 +91,7 @@ async function load() {
     $('.lineage i').classList.add('ready')
     state.priority = priority.items
     state.tasks = tasks.items
+    state.selectedTasks = new Set([...state.selectedTasks].filter(taskId => tasks.items.some(task => task.task_id === taskId)))
     if (!$('#task-risk-filter').value && !$('#task-owner-filter').value) {
       const selectedOwner = $('#task-owner-filter').value
       const owners = [...new Set(tasks.items.map(task => task.owner))].sort((left, right) => left.localeCompare(right, 'zh-CN'))
@@ -142,6 +145,13 @@ $('#task-form').addEventListener('submit', async event => {
 })
 
 document.addEventListener('change', async event => {
+  if (event.target.matches('[data-task-id]')) {
+    if (event.target.checked) state.selectedTasks.add(event.target.dataset.taskId)
+    else state.selectedTasks.delete(event.target.dataset.taskId)
+    $('#selected-task-count').textContent = `已选择 ${state.selectedTasks.size} 条任务`
+    $('#bulk-assign-owner').disabled = state.selectedTasks.size === 0
+    return
+  }
   if (['risk-filter', 'task-risk-filter', 'task-owner-filter'].includes(event.target.id)) { await load(); return }
   if (!event.target.classList.contains('task-status')) return
   try {
@@ -163,6 +173,18 @@ document.addEventListener('click', async event => {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ owner }),
     })
     await load()
+  } catch (error) { $('#error-banner').textContent = error.message; $('#error-banner').hidden = false }
+})
+
+$('#bulk-assign-owner').addEventListener('click', async () => {
+  const owner = $('#bulk-task-owner').value.trim()
+  if (!owner || state.selectedTasks.size === 0) return
+  try {
+    await request('/v1/retention/tasks/bulk-owner', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task_ids: [...state.selectedTasks], owner }),
+    })
+    state.selectedTasks.clear(); $('#bulk-task-owner').value = ''; await load()
   } catch (error) { $('#error-banner').textContent = error.message; $('#error-banner').hidden = false }
 })
 
