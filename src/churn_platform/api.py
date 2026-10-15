@@ -12,7 +12,7 @@ from typing import Annotated, Any, Literal
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .inference import canonical_sha256, load_model
 from .feature_registry import FeatureRegistry
@@ -72,6 +72,19 @@ class RetentionTaskBulkStatusUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     task_ids: list[str] = Field(min_length=1, max_length=100)
     status: Literal["OPEN", "IN_PROGRESS", "COMPLETED", "DISMISSED"]
+
+
+class RetentionTaskBulkPreview(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    task_ids: list[str] = Field(min_length=1, max_length=100)
+    owner: str | None = Field(default=None, min_length=1, max_length=80)
+    status: Literal["OPEN", "IN_PROGRESS", "COMPLETED", "DISMISSED"] | None = None
+
+    @model_validator(mode="after")
+    def require_operation(self) -> "RetentionTaskBulkPreview":
+        if self.owner is None and self.status is None:
+            raise ValueError("owner or status is required")
+        return self
 
 
 class PredictionRepository:
@@ -165,7 +178,7 @@ def create_app(
 
     app = FastAPI(
         title="Customer Retention Operations Platform",
-        version="1.10.0",
+        version="1.11.0",
         lifespan=lifespan,
     )
 
@@ -375,6 +388,34 @@ def create_app(
             "count": len(items), "changed_count": changed_count,
             "unchanged_count": len(items) - changed_count,
             "owner": normalized_owner, "items": items,
+        }
+
+    @app.post("/v1/retention/tasks/bulk-preview")
+    def preview_retention_task_bulk_update(
+        command: RetentionTaskBulkPreview,
+        request: Request,
+    ) -> dict[str, Any]:
+        unique_ids = list(dict.fromkeys(command.task_ids))
+        try:
+            items = [request.app.state.task_store.get(task_id) for task_id in unique_ids]
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="retention task not found") from error
+        normalized_owner = command.owner.strip() if command.owner is not None else None
+        changed_items = [
+            item for item in items
+            if (normalized_owner is not None and item["owner"] != normalized_owner)
+            or (command.status is not None and item["status"] != command.status)
+        ]
+        return {
+            "count": len(items),
+            "changed_count": len(changed_items),
+            "unchanged_count": len(items) - len(changed_items),
+            "owner_changed_count": sum(
+                normalized_owner is not None and item["owner"] != normalized_owner for item in items
+            ),
+            "status_changed_count": sum(
+                command.status is not None and item["status"] != command.status for item in items
+            ),
         }
 
     @app.patch("/v1/retention/tasks/bulk-status")

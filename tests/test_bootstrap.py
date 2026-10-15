@@ -20,7 +20,7 @@ class BootstrapTest(unittest.TestCase):
         signature = BOOTSTRAP._runtime_signature()
         self.assertEqual(signature["schema"], 1)
         self.assertEqual(signature["project"], "customer-churn-feature-platform")
-        self.assertEqual(signature["project_version"], "1.10.0")
+        self.assertEqual(signature["project_version"], "1.11.0")
         self.assertEqual(len(signature["checkout_key"]), 12)
         self.assertEqual(signature["install_extras"], "")
         self.assertEqual(len(signature["pyproject_sha256"]), 64)

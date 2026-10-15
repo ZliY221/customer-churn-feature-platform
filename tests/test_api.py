@@ -133,6 +133,9 @@ class PredictionApiTests(unittest.TestCase):
                 tasks = [client.post("/v1/retention/tasks", json={
                     "prediction_id": prediction["prediction_id"], "owner": "retention-team"
                 }).json() for prediction in predictions]
+                preview = client.post("/v1/retention/tasks/bulk-preview", json={
+                    "task_ids": [task["task_id"] for task in tasks], "owner": "priority-desk"
+                })
                 response = client.patch("/v1/retention/tasks/bulk-owner", json={
                     "task_ids": [task["task_id"] for task in tasks], "owner": "priority-desk"
                 })
@@ -145,6 +148,17 @@ class PredictionApiTests(unittest.TestCase):
                 empty = client.patch("/v1/retention/tasks/bulk-owner", json={
                     "task_ids": [], "owner": "priority-desk"
                 })
+                repeated_preview = client.post("/v1/retention/tasks/bulk-preview", json={
+                    "task_ids": [task["task_id"] for task in tasks], "owner": "priority-desk"
+                })
+                missing_preview = client.post("/v1/retention/tasks/bulk-preview", json={
+                    "task_ids": ["missing"], "status": "COMPLETED"
+                })
+                invalid_preview = client.post("/v1/retention/tasks/bulk-preview", json={
+                    "task_ids": [task["task_id"] for task in tasks]
+                })
+            self.assertEqual(2, preview.json()["changed_count"])
+            self.assertEqual(0, preview.json()["unchanged_count"])
             self.assertEqual(200, response.status_code)
             self.assertEqual(2, response.json()["count"])
             self.assertEqual(2, response.json()["changed_count"])
@@ -154,6 +168,10 @@ class PredictionApiTests(unittest.TestCase):
             self.assertEqual({"priority-desk"}, {item["owner"] for item in response.json()["items"]})
             self.assertEqual(404, missing.status_code)
             self.assertEqual(422, empty.status_code)
+            self.assertEqual(0, repeated_preview.json()["changed_count"])
+            self.assertEqual(2, repeated_preview.json()["unchanged_count"])
+            self.assertEqual(404, missing_preview.status_code)
+            self.assertEqual(422, invalid_preview.status_code)
 
     def test_retention_tasks_support_bulk_status_progression(self) -> None:
         with TemporaryDirectory() as directory:

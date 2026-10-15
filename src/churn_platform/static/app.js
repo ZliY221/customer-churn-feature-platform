@@ -180,13 +180,25 @@ document.addEventListener('click', async event => {
   } catch (error) { $('#error-banner').textContent = error.message; $('#error-banner').hidden = false }
 })
 
+async function confirmBulkOperation(payload, label) {
+  const preview = await request('/v1/retention/tasks/bulk-preview', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+  })
+  const message = `预览：将更新 ${preview.changed_count} 条，跳过 ${preview.unchanged_count} 条`
+  $('#bulk-action-result').textContent = message
+  if (preview.changed_count === 0) return false
+  return window.confirm(`${label}\n${message}\n确认继续执行吗？`)
+}
+
 $('#bulk-assign-owner').addEventListener('click', async () => {
   const owner = $('#bulk-task-owner').value.trim()
   if (!owner || state.selectedTasks.size === 0) return
   try {
+    const payload = { task_ids: [...state.selectedTasks], owner }
+    if (!await confirmBulkOperation(payload, `批量分派给 ${owner}`)) return
     const result = await request('/v1/retention/tasks/bulk-owner', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task_ids: [...state.selectedTasks], owner }),
+      body: JSON.stringify(payload),
     })
     $('#bulk-action-result').textContent = `已更新 ${result.changed_count} 条，跳过 ${result.unchanged_count} 条`
     state.selectedTasks.clear(); $('#bulk-task-owner').value = ''; await load()
@@ -196,9 +208,11 @@ $('#bulk-assign-owner').addEventListener('click', async () => {
 async function bulkUpdateStatus(status) {
   if (state.selectedTasks.size === 0) return
   try {
+    const payload = { task_ids: [...state.selectedTasks], status }
+    if (!await confirmBulkOperation(payload, `批量更新为${statusNames[status]}`)) return
     const result = await request('/v1/retention/tasks/bulk-status', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task_ids: [...state.selectedTasks], status }),
+      body: JSON.stringify(payload),
     })
     $('#bulk-action-result').textContent = `已更新 ${result.changed_count} 条，跳过 ${result.unchanged_count} 条`
     state.selectedTasks.clear(); await load()
