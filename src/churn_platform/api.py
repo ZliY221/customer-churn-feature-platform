@@ -165,7 +165,7 @@ def create_app(
 
     app = FastAPI(
         title="Customer Retention Operations Platform",
-        version="1.9.0",
+        version="1.10.0",
         lifespan=lifespan,
     )
 
@@ -362,12 +362,20 @@ def create_app(
         request: Request,
     ) -> dict[str, Any]:
         try:
+            unique_ids = list(dict.fromkeys(command.task_ids))
+            before = {task_id: request.app.state.task_store.get(task_id) for task_id in unique_ids}
             items = request.app.state.task_store.update_owners(command.task_ids, command.owner)
         except KeyError as error:
             raise HTTPException(status_code=404, detail="retention task not found") from error
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
-        return {"count": len(items), "owner": command.owner.strip(), "items": items}
+        normalized_owner = command.owner.strip()
+        changed_count = sum(before[item["task_id"]]["owner"] != normalized_owner for item in items)
+        return {
+            "count": len(items), "changed_count": changed_count,
+            "unchanged_count": len(items) - changed_count,
+            "owner": normalized_owner, "items": items,
+        }
 
     @app.patch("/v1/retention/tasks/bulk-status")
     def update_retention_task_statuses(
@@ -375,12 +383,19 @@ def create_app(
         request: Request,
     ) -> dict[str, Any]:
         try:
+            unique_ids = list(dict.fromkeys(command.task_ids))
+            before = {task_id: request.app.state.task_store.get(task_id) for task_id in unique_ids}
             items = request.app.state.task_store.update_statuses(command.task_ids, command.status)
         except KeyError as error:
             raise HTTPException(status_code=404, detail="retention task not found") from error
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
-        return {"count": len(items), "status": command.status, "items": items}
+        changed_count = sum(before[item["task_id"]]["status"] != command.status for item in items)
+        return {
+            "count": len(items), "changed_count": changed_count,
+            "unchanged_count": len(items) - changed_count,
+            "status": command.status, "items": items,
+        }
 
     @app.get("/v1/retention/tasks/{task_id}/events")
     def retention_task_events(task_id: str, request: Request) -> dict[str, Any]:

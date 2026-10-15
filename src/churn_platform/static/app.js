@@ -184,10 +184,11 @@ $('#bulk-assign-owner').addEventListener('click', async () => {
   const owner = $('#bulk-task-owner').value.trim()
   if (!owner || state.selectedTasks.size === 0) return
   try {
-    await request('/v1/retention/tasks/bulk-owner', {
+    const result = await request('/v1/retention/tasks/bulk-owner', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ task_ids: [...state.selectedTasks], owner }),
     })
+    $('#bulk-action-result').textContent = `已更新 ${result.changed_count} 条，跳过 ${result.unchanged_count} 条`
     state.selectedTasks.clear(); $('#bulk-task-owner').value = ''; await load()
   } catch (error) { $('#error-banner').textContent = error.message; $('#error-banner').hidden = false }
 })
@@ -195,10 +196,11 @@ $('#bulk-assign-owner').addEventListener('click', async () => {
 async function bulkUpdateStatus(status) {
   if (state.selectedTasks.size === 0) return
   try {
-    await request('/v1/retention/tasks/bulk-status', {
+    const result = await request('/v1/retention/tasks/bulk-status', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ task_ids: [...state.selectedTasks], status }),
     })
+    $('#bulk-action-result').textContent = `已更新 ${result.changed_count} 条，跳过 ${result.unchanged_count} 条`
     state.selectedTasks.clear(); await load()
   } catch (error) { $('#error-banner').textContent = error.message; $('#error-banner').hidden = false }
 }

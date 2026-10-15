@@ -136,6 +136,9 @@ class PredictionApiTests(unittest.TestCase):
                 response = client.patch("/v1/retention/tasks/bulk-owner", json={
                     "task_ids": [task["task_id"] for task in tasks], "owner": "priority-desk"
                 })
+                repeated = client.patch("/v1/retention/tasks/bulk-owner", json={
+                    "task_ids": [task["task_id"] for task in tasks], "owner": "priority-desk"
+                })
                 missing = client.patch("/v1/retention/tasks/bulk-owner", json={
                     "task_ids": ["missing"], "owner": "priority-desk"
                 })
@@ -144,6 +147,10 @@ class PredictionApiTests(unittest.TestCase):
                 })
             self.assertEqual(200, response.status_code)
             self.assertEqual(2, response.json()["count"])
+            self.assertEqual(2, response.json()["changed_count"])
+            self.assertEqual(0, response.json()["unchanged_count"])
+            self.assertEqual(0, repeated.json()["changed_count"])
+            self.assertEqual(2, repeated.json()["unchanged_count"])
             self.assertEqual({"priority-desk"}, {item["owner"] for item in response.json()["items"]})
             self.assertEqual(404, missing.status_code)
             self.assertEqual(422, empty.status_code)
@@ -159,11 +166,18 @@ class PredictionApiTests(unittest.TestCase):
                 response = client.patch("/v1/retention/tasks/bulk-status", json={
                     "task_ids": [task["task_id"], task["task_id"]], "status": "IN_PROGRESS"
                 })
+                repeated = client.patch("/v1/retention/tasks/bulk-status", json={
+                    "task_ids": [task["task_id"]], "status": "IN_PROGRESS"
+                })
                 invalid = client.patch("/v1/retention/tasks/bulk-status", json={
                     "task_ids": [], "status": "COMPLETED"
                 })
             self.assertEqual(200, response.status_code)
             self.assertEqual(1, response.json()["count"])
+            self.assertEqual(1, response.json()["changed_count"])
+            self.assertEqual(0, response.json()["unchanged_count"])
+            self.assertEqual(0, repeated.json()["changed_count"])
+            self.assertEqual(1, repeated.json()["unchanged_count"])
             self.assertEqual("IN_PROGRESS", response.json()["items"][0]["status"])
             self.assertEqual(422, invalid.status_code)
 
