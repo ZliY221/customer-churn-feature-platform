@@ -91,6 +91,9 @@ class RetentionOperationsTests(unittest.TestCase):
             self.assertEqual(2, len(updated))
             self.assertEqual({"shared-team"}, {item["owner"] for item in updated})
             self.assertEqual("OWNER_CHANGED", store.events(first["task_id"])[-1]["event_type"])
+            event_count = len(store.events(first["task_id"]))
+            store.update_owners([first["task_id"]], "shared-team")
+            self.assertEqual(event_count, len(store.events(first["task_id"])))
             with self.assertRaises(KeyError):
                 store.update_owners([first["task_id"], "missing"], "another-team")
             self.assertEqual("shared-team", store.get(first["task_id"])["owner"])
