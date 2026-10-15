@@ -190,7 +190,14 @@ async function confirmBulkOperation(payload, label) {
   const message = `预览：将更新 ${preview.changed_count} 条，跳过 ${preview.unchanged_count} 条${riskDetail ? ` · ${riskDetail}` : ''}`
   $('#bulk-action-result').textContent = message
   if (preview.changed_count === 0) return false
-  return window.confirm(`${label}\n${message}\n确认继续执行吗？`)
+  const changePreview = preview.changes.slice(0, 3).map(change => {
+    const details = change.changed_fields.map(field => field === 'owner'
+      ? `负责人 ${change.before.owner} → ${change.after.owner}`
+      : `状态 ${statusNames[change.before.status]} → ${statusNames[change.after.status]}`)
+    return `${change.task_id}：${details.join('，')}`
+  }).join('\n')
+  const remaining = preview.changes.length > 3 ? `\n另有 ${preview.changes.length - 3} 条变更` : ''
+  return window.confirm(`${label}\n${message}\n${changePreview}${remaining}\n确认继续执行吗？`)
 }
 
 $('#bulk-assign-owner').addEventListener('click', async () => {
