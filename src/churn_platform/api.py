@@ -457,6 +457,12 @@ def create_app(
             "changed_by_risk_band": changed_by_risk_band,
             "changed_by_status": changed_by_status,
             "changes": changes,
+            "impact": {
+                "field_change_count": sum(len(change["changed_fields"]) for change in changes),
+                "source_owner_count": len({item["owner"] for item in changed_items}),
+                "target_owner": normalized_owner,
+                "target_status": command.status,
+            },
             "requires_explicit_confirmation": bool(confirmation_reasons),
             "confirmation_reasons": confirmation_reasons,
         }

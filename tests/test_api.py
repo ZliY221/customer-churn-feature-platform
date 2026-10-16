@@ -174,6 +174,9 @@ class PredictionApiTests(unittest.TestCase):
             self.assertEqual("priority-desk", preview.json()["changes"][0]["after"]["owner"])
             self.assertTrue(preview.json()["requires_explicit_confirmation"])
             self.assertIn("HIGH_RISK_TASKS", preview.json()["confirmation_reasons"])
+            self.assertEqual(2, preview.json()["impact"]["field_change_count"])
+            self.assertEqual(1, preview.json()["impact"]["source_owner_count"])
+            self.assertEqual("priority-desk", preview.json()["impact"]["target_owner"])
             self.assertEqual(200, response.status_code)
             self.assertEqual(2, response.json()["count"])
             self.assertEqual(2, response.json()["changed_count"])
@@ -220,6 +223,7 @@ class PredictionApiTests(unittest.TestCase):
             self.assertEqual("IN_PROGRESS", response.json()["items"][0]["status"])
             self.assertEqual(422, invalid.status_code)
             self.assertIn("TERMINAL_STATUS", terminal_preview.json()["confirmation_reasons"])
+            self.assertEqual("COMPLETED", terminal_preview.json()["impact"]["target_status"])
 
     def test_v2_bulk_command_assigns_and_starts_tasks_atomically(self) -> None:
         with TemporaryDirectory() as directory:

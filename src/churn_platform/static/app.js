@@ -189,7 +189,7 @@ async function confirmBulkOperation(payload, label) {
   const riskDetail = Object.entries(preview.changed_by_risk_band)
     .filter(([, count]) => count > 0)
     .map(([band, count]) => `${bandNames[band]} ${count} 条`).join('、')
-  const message = `预览：将更新 ${preview.changed_count} 条，跳过 ${preview.unchanged_count} 条${riskDetail ? ` · ${riskDetail}` : ''}`
+  const message = `预览：将更新 ${preview.changed_count} 条，跳过 ${preview.unchanged_count} 条 · 共 ${preview.impact.field_change_count} 个字段变化${riskDetail ? ` · ${riskDetail}` : ''}`
   $('#bulk-action-result').textContent = message
   if (preview.changed_count === 0) return false
   const changePreview = preview.changes.slice(0, 3).map(change => {
