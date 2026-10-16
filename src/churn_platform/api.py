@@ -89,6 +89,10 @@ class RetentionTaskBulkPreview(BaseModel):
         return self
 
 
+class RetentionTaskBulkCommand(RetentionTaskBulkPreview):
+    """Validated combined bulk command used by the v2 operations workflow."""
+
+
 class PredictionRepository:
     def __init__(self, rows: list[dict[str, Any]], model: dict[str, Any]) -> None:
         self.model = model
@@ -466,6 +470,37 @@ def create_app(
             "count": len(items), "changed_count": changed_count,
             "unchanged_count": len(items) - changed_count,
             "status": command.status, "items": items,
+        }
+
+    @app.patch("/v2/retention/tasks/bulk")
+    def update_retention_tasks(
+        command: RetentionTaskBulkCommand,
+        request: Request,
+    ) -> dict[str, Any]:
+        try:
+            unique_ids = list(dict.fromkeys(command.task_ids))
+            before = {task_id: request.app.state.task_store.get(task_id) for task_id in unique_ids}
+            items = request.app.state.task_store.update_many(
+                command.task_ids, owner=command.owner, status=command.status
+            )
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="retention task not found") from error
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        owner_changed = sum(before[item["task_id"]]["owner"] != item["owner"] for item in items)
+        status_changed = sum(before[item["task_id"]]["status"] != item["status"] for item in items)
+        changed_count = sum(
+            before[item["task_id"]]["owner"] != item["owner"]
+            or before[item["task_id"]]["status"] != item["status"]
+            for item in items
+        )
+        return {
+            "count": len(items),
+            "changed_count": changed_count,
+            "unchanged_count": len(items) - changed_count,
+            "owner_changed_count": owner_changed,
+            "status_changed_count": status_changed,
+            "items": items,
         }
 
     @app.get("/v1/retention/tasks/{task_id}/events")

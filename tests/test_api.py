@@ -215,6 +215,27 @@ class PredictionApiTests(unittest.TestCase):
             self.assertEqual("IN_PROGRESS", response.json()["items"][0]["status"])
             self.assertEqual(422, invalid.status_code)
 
+    def test_v2_bulk_command_assigns_and_starts_tasks_atomically(self) -> None:
+        with TemporaryDirectory() as directory:
+            database = Path(directory) / "tasks.sqlite3"
+            with TestClient(create_app(self.model, self.predictions, task_database_path=database)) as client:
+                predictions = client.get("/v1/portfolio/priority", params={"limit": 2}).json()["items"]
+                tasks = [client.post("/v1/retention/tasks", json={
+                    "prediction_id": item["prediction_id"], "owner": "retention-team"
+                }).json() for item in predictions]
+                payload = {"task_ids": [item["task_id"] for item in tasks],
+                           "owner": "priority-desk", "status": "IN_PROGRESS"}
+                response = client.patch("/v2/retention/tasks/bulk", json=payload)
+                repeated = client.patch("/v2/retention/tasks/bulk", json=payload)
+                events = client.get(f"/v1/retention/tasks/{tasks[0]['task_id']}/events")
+            self.assertEqual(2, response.json()["changed_count"])
+            self.assertEqual(2, response.json()["owner_changed_count"])
+            self.assertEqual(2, response.json()["status_changed_count"])
+            self.assertEqual({"priority-desk"}, {item["owner"] for item in response.json()["items"]})
+            self.assertEqual({"IN_PROGRESS"}, {item["status"] for item in response.json()["items"]})
+            self.assertEqual(0, repeated.json()["changed_count"])
+            self.assertEqual(3, events.json()["count"])
+
 
 if __name__ == "__main__":
     unittest.main()

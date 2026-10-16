@@ -54,6 +54,7 @@ function renderTasks(eventCount = 0) {
   }).join('')
   $('#selected-task-count').textContent = `已选择 ${state.selectedTasks.size} 条任务`
   $('#bulk-assign-owner').disabled = state.selectedTasks.size === 0
+  $('#bulk-assign-start').disabled = state.selectedTasks.size === 0
   $('#bulk-start-tasks').disabled = state.selectedTasks.size === 0
   $('#bulk-complete-tasks').disabled = state.selectedTasks.size === 0
 }
@@ -152,6 +153,7 @@ document.addEventListener('change', async event => {
     else state.selectedTasks.delete(event.target.dataset.taskId)
     $('#selected-task-count').textContent = `已选择 ${state.selectedTasks.size} 条任务`
     $('#bulk-assign-owner').disabled = state.selectedTasks.size === 0
+    $('#bulk-assign-start').disabled = state.selectedTasks.size === 0
     $('#bulk-start-tasks').disabled = state.selectedTasks.size === 0
     $('#bulk-complete-tasks').disabled = state.selectedTasks.size === 0
     return
@@ -231,6 +233,20 @@ async function bulkUpdateStatus(status) {
 
 $('#bulk-start-tasks').addEventListener('click', () => bulkUpdateStatus('IN_PROGRESS'))
 $('#bulk-complete-tasks').addEventListener('click', () => bulkUpdateStatus('COMPLETED'))
+
+$('#bulk-assign-start').addEventListener('click', async () => {
+  const owner = $('#bulk-task-owner').value.trim()
+  if (!owner || state.selectedTasks.size === 0) return
+  try {
+    const payload = { task_ids: [...state.selectedTasks], owner, status: 'IN_PROGRESS' }
+    if (!await confirmBulkOperation(payload, `分派给 ${owner} 并开始处理`)) return
+    const result = await request('/v2/retention/tasks/bulk', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+    })
+    $('#bulk-action-result').textContent = `已更新 ${result.changed_count} 条 · 分派 ${result.owner_changed_count} 条 · 推进 ${result.status_changed_count} 条`
+    state.selectedTasks.clear(); $('#bulk-task-owner').value = ''; await load()
+  } catch (error) { $('#error-banner').textContent = error.message; $('#error-banner').hidden = false }
+})
 
 async function pollRetentionEvents() {
   if (state.polling || document.hidden) return
