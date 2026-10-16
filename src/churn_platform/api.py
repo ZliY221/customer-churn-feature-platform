@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import hashlib
 import json
 import math
 import os
@@ -525,6 +526,14 @@ def create_app(
                     "after": {field: item[field] for field in changed_fields},
                 })
         latest_event_id = request.app.state.task_store.latest_event_id()
+        receipt_payload = json.dumps({
+            "task_ids": sorted(unique_ids),
+            "owner": command.owner.strip() if command.owner is not None else None,
+            "status": command.status,
+            "first_new_event_id": previous_event_id + 1 if latest_event_id > previous_event_id else None,
+            "latest_event_id": latest_event_id,
+        }, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+        receipt_id = "RET-" + hashlib.sha256(receipt_payload.encode("utf-8")).hexdigest()[:12].upper()
         return {
             "count": len(items),
             "changed_count": changed_count,
@@ -532,6 +541,7 @@ def create_app(
             "owner_changed_count": owner_changed,
             "status_changed_count": status_changed,
             "audit": {
+                "receipt_id": receipt_id,
                 "events_created_count": latest_event_id - previous_event_id,
                 "first_new_event_id": previous_event_id + 1 if latest_event_id > previous_event_id else None,
                 "latest_event_id": latest_event_id,

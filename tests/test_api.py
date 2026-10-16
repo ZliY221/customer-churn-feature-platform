@@ -245,6 +245,7 @@ class PredictionApiTests(unittest.TestCase):
             self.assertEqual({"IN_PROGRESS"}, {item["status"] for item in response.json()["items"]})
             self.assertEqual(0, repeated.json()["changed_count"])
             self.assertEqual(4, response.json()["audit"]["events_created_count"])
+            self.assertRegex(response.json()["audit"]["receipt_id"], r"^RET-[0-9A-F]{12}$")
             self.assertIsNotNone(response.json()["audit"]["first_new_event_id"])
             self.assertEqual(2, len(response.json()["changes"]))
             self.assertEqual(
@@ -253,6 +254,10 @@ class PredictionApiTests(unittest.TestCase):
             self.assertEqual("retention-team", response.json()["changes"][0]["before"]["owner"])
             self.assertEqual("priority-desk", response.json()["changes"][0]["after"]["owner"])
             self.assertEqual(0, repeated.json()["audit"]["events_created_count"])
+            self.assertRegex(repeated.json()["audit"]["receipt_id"], r"^RET-[0-9A-F]{12}$")
+            self.assertNotEqual(
+                response.json()["audit"]["receipt_id"], repeated.json()["audit"]["receipt_id"]
+            )
             self.assertEqual([], repeated.json()["changes"])
             self.assertEqual(3, events.json()["count"])
 
