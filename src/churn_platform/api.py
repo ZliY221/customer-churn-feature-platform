@@ -437,6 +437,13 @@ def create_app(
                     "status": command.status if command.status is not None else item["status"],
                 },
             })
+        confirmation_reasons = []
+        if any(item["risk_band"] in {"CRITICAL", "HIGH"} for item in changed_items):
+            confirmation_reasons.append("HIGH_RISK_TASKS")
+        if command.status in {"COMPLETED", "DISMISSED"}:
+            confirmation_reasons.append("TERMINAL_STATUS")
+        if normalized_owner is not None and command.status is not None:
+            confirmation_reasons.append("MULTI_FIELD_CHANGE")
         return {
             "count": len(items),
             "changed_count": len(changed_items),
@@ -450,6 +457,8 @@ def create_app(
             "changed_by_risk_band": changed_by_risk_band,
             "changed_by_status": changed_by_status,
             "changes": changes,
+            "requires_explicit_confirmation": bool(confirmation_reasons),
+            "confirmation_reasons": confirmation_reasons,
         }
 
     @app.patch("/v1/retention/tasks/bulk-status")

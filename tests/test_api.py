@@ -172,6 +172,8 @@ class PredictionApiTests(unittest.TestCase):
             self.assertEqual(["owner"], preview.json()["changes"][0]["changed_fields"])
             self.assertEqual("retention-team", preview.json()["changes"][0]["before"]["owner"])
             self.assertEqual("priority-desk", preview.json()["changes"][0]["after"]["owner"])
+            self.assertTrue(preview.json()["requires_explicit_confirmation"])
+            self.assertIn("HIGH_RISK_TASKS", preview.json()["confirmation_reasons"])
             self.assertEqual(200, response.status_code)
             self.assertEqual(2, response.json()["count"])
             self.assertEqual(2, response.json()["changed_count"])
@@ -206,6 +208,9 @@ class PredictionApiTests(unittest.TestCase):
                 invalid = client.patch("/v1/retention/tasks/bulk-status", json={
                     "task_ids": [], "status": "COMPLETED"
                 })
+                terminal_preview = client.post("/v1/retention/tasks/bulk-preview", json={
+                    "task_ids": [task["task_id"]], "status": "COMPLETED"
+                })
             self.assertEqual(200, response.status_code)
             self.assertEqual(1, response.json()["count"])
             self.assertEqual(1, response.json()["changed_count"])
@@ -214,6 +219,7 @@ class PredictionApiTests(unittest.TestCase):
             self.assertEqual(1, repeated.json()["unchanged_count"])
             self.assertEqual("IN_PROGRESS", response.json()["items"][0]["status"])
             self.assertEqual(422, invalid.status_code)
+            self.assertIn("TERMINAL_STATUS", terminal_preview.json()["confirmation_reasons"])
 
     def test_v2_bulk_command_assigns_and_starts_tasks_atomically(self) -> None:
         with TemporaryDirectory() as directory:

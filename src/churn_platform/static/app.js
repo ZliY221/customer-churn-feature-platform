@@ -199,7 +199,9 @@ async function confirmBulkOperation(payload, label) {
     return `${change.task_id}：${details.join('，')}`
   }).join('\n')
   const remaining = preview.changes.length > 3 ? `\n另有 ${preview.changes.length - 3} 条变更` : ''
-  return window.confirm(`${label}\n${message}\n${changePreview}${remaining}\n确认继续执行吗？`)
+  const caution = preview.requires_explicit_confirmation
+    ? `\n需要重点确认：${preview.confirmation_reasons.join('、')}` : ''
+  return window.confirm(`${label}\n${message}${caution}\n${changePreview}${remaining}\n确认继续执行吗？`)
 }
 
 $('#bulk-assign-owner').addEventListener('click', async () => {
