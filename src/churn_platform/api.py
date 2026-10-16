@@ -495,6 +495,7 @@ def create_app(
         try:
             unique_ids = list(dict.fromkeys(command.task_ids))
             before = {task_id: request.app.state.task_store.get(task_id) for task_id in unique_ids}
+            previous_event_id = request.app.state.task_store.latest_event_id()
             items = request.app.state.task_store.update_many(
                 command.task_ids, owner=command.owner, status=command.status
             )
@@ -509,12 +510,18 @@ def create_app(
             or before[item["task_id"]]["status"] != item["status"]
             for item in items
         )
+        latest_event_id = request.app.state.task_store.latest_event_id()
         return {
             "count": len(items),
             "changed_count": changed_count,
             "unchanged_count": len(items) - changed_count,
             "owner_changed_count": owner_changed,
             "status_changed_count": status_changed,
+            "audit": {
+                "events_created_count": latest_event_id - previous_event_id,
+                "first_new_event_id": previous_event_id + 1 if latest_event_id > previous_event_id else None,
+                "latest_event_id": latest_event_id,
+            },
             "items": items,
         }
 

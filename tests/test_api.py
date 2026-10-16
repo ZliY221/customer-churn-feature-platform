@@ -244,6 +244,9 @@ class PredictionApiTests(unittest.TestCase):
             self.assertEqual({"priority-desk"}, {item["owner"] for item in response.json()["items"]})
             self.assertEqual({"IN_PROGRESS"}, {item["status"] for item in response.json()["items"]})
             self.assertEqual(0, repeated.json()["changed_count"])
+            self.assertEqual(4, response.json()["audit"]["events_created_count"])
+            self.assertIsNotNone(response.json()["audit"]["first_new_event_id"])
+            self.assertEqual(0, repeated.json()["audit"]["events_created_count"])
             self.assertEqual(3, events.json()["count"])
 
 

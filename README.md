@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/ci.yml)
 [![Portable smoke](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/portable-smoke.yml/badge.svg)](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/portable-smoke.yml)
-![Version](https://img.shields.io/badge/version-v2.2.0-285846)
+![Version](https://img.shields.io/badge/version-v2.3.0-285846)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776ab)
 ![API](https://img.shields.io/badge/API-FastAPI-05998b)
 
@@ -87,6 +87,7 @@ flowchart LR
 - 新版批量工作流可在一次事务中同时完成负责人分派与任务启动。
 - 高风险、终态和多字段批量变更会给出明确的重点确认原因。
 - 预览汇总字段变化量、来源负责人范围和目标值，补充任务数之外的影响口径。
+- 组合执行返回新增事件数量与事件游标范围，便于核对实时同步和审计完整性。
 
 ### 数据与服务
 
@@ -138,4 +139,4 @@ docs/                    架构、模型和操作文档
 
 ## 版本与维护
 
-当前版本为 `v2.2.0`。每次发布同步维护[用户使用指南](docs/user-guide.md)、[版本记录](CHANGELOG.md)和[版本摘要](VERSION_LOG.md)。
+当前版本为 `v2.3.0`。每次发布同步维护[用户使用指南](docs/user-guide.md)、[版本记录](CHANGELOG.md)和[版本摘要](VERSION_LOG.md)。
