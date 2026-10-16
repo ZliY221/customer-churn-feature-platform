@@ -245,7 +245,8 @@ $('#bulk-assign-start').addEventListener('click', async () => {
     const result = await request('/v2/retention/tasks/bulk', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
     })
-    $('#bulk-action-result').textContent = `已更新 ${result.changed_count} 条 · 分派 ${result.owner_changed_count} 条 · 推进 ${result.status_changed_count} 条 · 新增审计事件 ${result.audit.events_created_count} 条`
+    const changedFields = result.changes.reduce((total, change) => total + change.changed_fields.length, 0)
+    $('#bulk-action-result').textContent = `已更新 ${result.changed_count} 条 · 分派 ${result.owner_changed_count} 条 · 推进 ${result.status_changed_count} 条 · ${changedFields} 个字段变化 · 新增审计事件 ${result.audit.events_created_count} 条`
     state.selectedTasks.clear(); $('#bulk-task-owner').value = ''; await load()
   } catch (error) { $('#error-banner').textContent = error.message; $('#error-banner').hidden = false }
 })

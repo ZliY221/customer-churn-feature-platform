@@ -246,7 +246,14 @@ class PredictionApiTests(unittest.TestCase):
             self.assertEqual(0, repeated.json()["changed_count"])
             self.assertEqual(4, response.json()["audit"]["events_created_count"])
             self.assertIsNotNone(response.json()["audit"]["first_new_event_id"])
+            self.assertEqual(2, len(response.json()["changes"]))
+            self.assertEqual(
+                ["owner", "status"], response.json()["changes"][0]["changed_fields"]
+            )
+            self.assertEqual("retention-team", response.json()["changes"][0]["before"]["owner"])
+            self.assertEqual("priority-desk", response.json()["changes"][0]["after"]["owner"])
             self.assertEqual(0, repeated.json()["audit"]["events_created_count"])
+            self.assertEqual([], repeated.json()["changes"])
             self.assertEqual(3, events.json()["count"])
 
 

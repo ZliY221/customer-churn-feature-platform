@@ -510,6 +510,20 @@ def create_app(
             or before[item["task_id"]]["status"] != item["status"]
             for item in items
         )
+        changes = []
+        for item in items:
+            previous = before[item["task_id"]]
+            changed_fields = [
+                field for field in ("owner", "status")
+                if previous[field] != item[field]
+            ]
+            if changed_fields:
+                changes.append({
+                    "task_id": item["task_id"],
+                    "changed_fields": changed_fields,
+                    "before": {field: previous[field] for field in changed_fields},
+                    "after": {field: item[field] for field in changed_fields},
+                })
         latest_event_id = request.app.state.task_store.latest_event_id()
         return {
             "count": len(items),
@@ -522,6 +536,7 @@ def create_app(
                 "first_new_event_id": previous_event_id + 1 if latest_event_id > previous_event_id else None,
                 "latest_event_id": latest_event_id,
             },
+            "changes": changes,
             "items": items,
         }
 
