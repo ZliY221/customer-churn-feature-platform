@@ -257,6 +257,7 @@ class PredictionApiTests(unittest.TestCase):
             self.assertIn(response.json()["audit"]["receipt_id"], response.json()["handoff"]["summary"])
             self.assertEqual("priority-desk", response.json()["handoff"]["target_owner"])
             self.assertTrue(response.json()["handoff"]["requires_review"])
+            self.assertIn("SCHEDULE_REVIEW", response.json()["handoff"]["checklist"])
             self.assertIsNotNone(response.json()["audit"]["first_new_event_id"])
             self.assertEqual(2, len(response.json()["changes"]))
             self.assertEqual(
@@ -274,6 +275,7 @@ class PredictionApiTests(unittest.TestCase):
             self.assertFalse(repeated.json()["follow_up"]["required"])
             self.assertEqual("NONE", repeated.json()["follow_up"]["review_priority"])
             self.assertFalse(repeated.json()["handoff"]["requires_review"])
+            self.assertEqual(["REVIEW_SELECTION"], repeated.json()["handoff"]["checklist"])
             self.assertEqual(3, events.json()["count"])
 
 

@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/ci.yml)
 [![Portable smoke](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/portable-smoke.yml/badge.svg)](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/portable-smoke.yml)
-![Version](https://img.shields.io/badge/version-v2.11.0-285846)
+![Version](https://img.shields.io/badge/version-v2.12.0-285846)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776ab)
 ![API](https://img.shields.io/badge/API-FastAPI-05998b)
 
@@ -94,6 +94,7 @@ flowchart LR
 - 汇总回执、变更数量、高优先级数量、目标负责人和后续动作，生成实时交接摘要。
 - 回执区分输入、唯一任务和重复选择数量，防止重复勾选影响判断。
 - 后续动作按风险影响标记 P1、P2 或无需复核优先级。
+- 为每次组合处置生成审计核对、负责人联系和复核安排清单。
 
 ### 数据与服务
 

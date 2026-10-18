@@ -563,6 +563,12 @@ def create_app(
             f"{receipt_id} · {changed_count}/{len(items)} tasks changed · "
             f"{high_priority_count} high priority · {target_owner} · {follow_up['next_action']}"
         )
+        handoff_checklist = ["REVIEW_SELECTION"]
+        if follow_up["required"]:
+            handoff_checklist = ["VERIFY_AUDIT_RANGE", "CONTACT_TARGET_OWNER"]
+            if high_priority_count > 0:
+                handoff_checklist.append("CONTACT_HIGH_PRIORITY_CUSTOMERS")
+            handoff_checklist.append("SCHEDULE_REVIEW")
         return {
             "count": len(items),
             "selection": {
@@ -590,6 +596,7 @@ def create_app(
                 "summary": handoff_summary,
                 "target_owner": target_owner,
                 "requires_review": follow_up["required"],
+                "checklist": handoff_checklist,
             },
             "changes": changes,
             "items": items,

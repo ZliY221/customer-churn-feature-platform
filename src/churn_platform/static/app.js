@@ -247,7 +247,7 @@ $('#bulk-assign-start').addEventListener('click', async () => {
     })
     const changedFields = result.changes.reduce((total, change) => total + change.changed_fields.length, 0)
     const followUp = result.follow_up.required ? `${result.follow_up.review_priority} · 下一步 ${result.follow_up.next_action}（${result.follow_up.review_window_hours} 小时内）` : `下一步 ${result.follow_up.next_action}`
-    $('#bulk-action-result').textContent = `${result.handoff.summary} · 去重 ${result.selection.duplicate_count} 条 · ${followUp} · ${changedFields} 个字段变化 · 新增审计事件 ${result.audit.events_created_count} 条`
+    $('#bulk-action-result').textContent = `${result.handoff.summary} · 去重 ${result.selection.duplicate_count} 条 · ${followUp} · 清单 ${result.handoff.checklist.join(' → ')} · ${changedFields} 个字段变化 · 新增审计事件 ${result.audit.events_created_count} 条`
     state.selectedTasks.clear(); $('#bulk-task-owner').value = ''; $('#bulk-task-note').value = ''; await load()
   } catch (error) { $('#error-banner').textContent = error.message; $('#error-banner').hidden = false }
 })
