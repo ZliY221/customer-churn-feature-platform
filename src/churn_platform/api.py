@@ -597,6 +597,8 @@ def create_app(
                 "target_owner": target_owner,
                 "requires_review": follow_up["required"],
                 "checklist": handoff_checklist,
+                "step_count": len(handoff_checklist),
+                "estimated_minutes": len(handoff_checklist) * 5,
             },
             "changes": changes,
             "items": items,
