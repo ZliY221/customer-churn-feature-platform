@@ -550,6 +550,7 @@ def create_app(
         high_priority_count = risk_band_counts["CRITICAL"] + risk_band_counts["HIGH"]
         follow_up = {
             "required": changed_count > 0,
+            "review_priority": "NONE" if changed_count == 0 else "P1" if high_priority_count > 0 else "P2",
             "next_action": (
                 "REVIEW_NO_CHANGE_SELECTION" if changed_count == 0
                 else "CONTACT_HIGH_PRIORITY_CUSTOMERS" if high_priority_count > 0
