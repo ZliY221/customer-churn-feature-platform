@@ -96,7 +96,11 @@ class PredictionApiTests(unittest.TestCase):
         self.assertEqual(200, console.status_code)
         self.assertIn("客户留存运营工作台", console.text)
         self.assertIn("任务时间线", console.text)
+        self.assertIn("客户留存工作路径", console.text)
+        self.assertIn('class="skip-link"', console.text)
         self.assertEqual(200, styles.status_code)
+        self.assertIn("--coral: #d96c55", styles.text)
+        self.assertIn("prefers-reduced-motion", styles.text)
         self.assertEqual(100, summary.json()["customer_count"])
         self.assertEqual(5, priority.json()["count"])
         probabilities = [float(item["churn_probability"]) for item in priority.json()["items"]]
