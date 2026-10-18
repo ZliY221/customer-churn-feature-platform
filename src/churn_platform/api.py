@@ -557,6 +557,11 @@ def create_app(
             ),
             "review_window_hours": None if changed_count == 0 else 4 if high_priority_count > 0 else 24,
         }
+        target_owner = command.owner.strip() if command.owner else "UNCHANGED"
+        handoff_summary = (
+            f"{receipt_id} · {changed_count}/{len(items)} tasks changed · "
+            f"{high_priority_count} high priority · {target_owner} · {follow_up['next_action']}"
+        )
         return {
             "count": len(items),
             "changed_count": changed_count,
@@ -575,6 +580,11 @@ def create_app(
                 "high_priority_count": high_priority_count,
             },
             "follow_up": follow_up,
+            "handoff": {
+                "summary": handoff_summary,
+                "target_owner": target_owner,
+                "requires_review": follow_up["required"],
+            },
             "changes": changes,
             "items": items,
         }
