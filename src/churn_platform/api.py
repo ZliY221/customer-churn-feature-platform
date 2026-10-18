@@ -564,6 +564,11 @@ def create_app(
         )
         return {
             "count": len(items),
+            "selection": {
+                "input_count": len(command.task_ids),
+                "unique_count": len(unique_ids),
+                "duplicate_count": len(command.task_ids) - len(unique_ids),
+            },
             "changed_count": changed_count,
             "unchanged_count": len(items) - changed_count,
             "owner_changed_count": owner_changed,
