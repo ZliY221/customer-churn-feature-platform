@@ -16,7 +16,8 @@
       <a class="active" href="#overview"><span>01</span>组合概览</a>
       <a href="#priority"><span>02</span>优先队列</a>
       <a href="#workloads"><span>03</span>责任视图</a>
-      <a href="#tasks"><span>04</span>跟进任务</a>
+      <a href="#outcomes"><span>04</span>处置结果</a>
+      <a href="#tasks"><span>05</span>跟进任务</a>
     </nav>
     <div class="lineage"><i></i><div><small>数据状态</small><strong id="lineage-status">正在连接</strong></div></div>
   </aside>
@@ -34,7 +35,7 @@
       <ol>
         <li><b>1</b><span>识别风险<strong>查看组合分层</strong></span></li>
         <li><b>2</b><span>安排跟进<strong>分派客户任务</strong></span></li>
-        <li><b>3</b><span>完成闭环<strong>记录状态时间线</strong></span></li>
+        <li><b>3</b><span>完成闭环<strong>登记联系与留存结果</strong></span></li>
       </ol>
     </section>
 
@@ -72,6 +73,16 @@
       <div class="workload-grid" id="workload-grid"><p class="empty-state">等待任务数据</p></div>
     </section>
 
+    <section class="panel outcome-panel" id="outcomes">
+      <div class="panel-head"><div><p class="overline">OUTCOME OBSERVATION</p><h2>留存处置结果</h2></div><span>按已登记任务统计</span></div>
+      <div class="outcome-summary-grid">
+        <article><span>已登记结果</span><strong id="outcome-recorded">0</strong><small>形成处置记录的任务</small></article>
+        <article><span>成功联系</span><strong id="outcome-reached">0</strong><small>已触达客户</small></article>
+        <article><span>7 天留存率</span><strong id="outcome-retention-7d">待观察</strong><small>仅统计成熟观察记录</small></article>
+        <article><span>30 天留存率</span><strong id="outcome-retention-30d">待观察</strong><small>仅统计成熟观察记录</small></article>
+      </div>
+    </section>
+
     <section class="panel" id="tasks">
       <div class="panel-head table-heading"><div><p class="overline">ACTION TRACKING</p><h2>运营任务</h2></div><div class="task-filters"><select id="task-risk-filter" aria-label="按任务风险筛选"><option value="">全部风险</option><option value="CRITICAL">极高风险</option><option value="HIGH">高风险</option><option value="WATCH">关注</option><option value="STABLE">稳定</option></select><select id="task-owner-filter" aria-label="按负责人筛选"><option value="">全部负责人</option></select><span id="task-total">0 条 · 0 条变更记录</span></div></div>
       <div class="bulk-task-actions"><span id="selected-task-count">已选择 0 条任务</span><input id="bulk-task-owner" maxlength="80" placeholder="批量分派负责人" aria-label="批量分派负责人"><input id="bulk-task-note" maxlength="200" placeholder="操作备注（可选）" aria-label="批量操作备注"><button id="bulk-assign-owner" type="button" disabled>批量分派</button><button id="bulk-assign-start" type="button" disabled>分派并开始</button><button class="outline" id="bulk-start-tasks" type="button" disabled>批量开始</button><button id="bulk-complete-tasks" type="button" disabled>批量完成</button><small id="bulk-action-result" role="status"></small></div>
@@ -94,6 +105,24 @@
       <div class="dialog-head"><div><p class="overline">TASK TIMELINE</p><h2>任务时间线</h2><small id="history-task-id"></small></div><button value="close" class="icon-button" aria-label="关闭">×</button></div>
       <ol id="history-list" class="history-list"></ol>
       <div class="dialog-actions"><button value="close" class="outline">关闭</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="outcome-dialog">
+    <form method="dialog" id="outcome-form">
+      <div class="dialog-head"><div><p class="overline">RETENTION RESULT</p><h2>登记处置结果</h2><small id="outcome-task-label"></small></div><button value="cancel" class="icon-button" aria-label="关闭">×</button></div>
+      <input type="hidden" id="outcome-task-id">
+      <div class="outcome-form-grid">
+        <label>联系结果<select id="outcome-contact-result" required><option value="REACHED">成功联系</option><option value="NO_RESPONSE">暂无回应</option><option value="INVALID_CONTACT">联系方式无效</option><option value="DECLINED">客户拒绝</option></select></label>
+        <label>联系渠道<select id="outcome-contact-channel" required><option value="PHONE">电话</option><option value="SMS">短信</option><option value="EMAIL">邮件</option><option value="IN_APP">站内触达</option><option value="OTHER">其他</option></select></label>
+        <label>客户反馈<select id="outcome-customer-response" required><option value="POSITIVE">积极</option><option value="NEUTRAL">中性</option><option value="NEGATIVE">消极</option><option value="UNKNOWN">未知</option></select></label>
+        <label>联系时间<input id="outcome-contacted-at" type="datetime-local" required></label>
+        <label>观察时间<input id="outcome-observed-at" type="datetime-local"></label>
+        <label>7 天是否留存<select id="outcome-retained-7d"><option value="">尚未观察</option><option value="true">是</option><option value="false">否</option></select></label>
+        <label>30 天是否留存<select id="outcome-retained-30d"><option value="">尚未观察</option><option value="true">是</option><option value="false">否</option></select></label>
+      </div>
+      <label>结果备注<textarea id="outcome-note" maxlength="500" rows="3" placeholder="记录客户反馈或后续观察说明"></textarea></label>
+      <div class="dialog-actions"><button value="cancel" class="outline">取消</button><button value="default">保存结果</button></div>
     </form>
   </dialog>
 

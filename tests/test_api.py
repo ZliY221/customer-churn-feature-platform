@@ -97,10 +97,13 @@ class PredictionApiTests(unittest.TestCase):
         self.assertIn("客户留存运营工作台", console.text)
         self.assertIn("任务时间线", console.text)
         self.assertIn("客户留存工作路径", console.text)
+        self.assertIn("留存处置结果", console.text)
+        self.assertIn('id="outcome-dialog"', console.text)
         self.assertIn('class="skip-link"', console.text)
         self.assertEqual(200, styles.status_code)
         self.assertIn("--coral: #d96c55", styles.text)
         self.assertIn("prefers-reduced-motion", styles.text)
+        self.assertIn(".outcome-summary-grid", styles.text)
         self.assertEqual(100, summary.json()["customer_count"])
         self.assertEqual(5, priority.json()["count"])
         probabilities = [float(item["churn_probability"]) for item in priority.json()["items"]]
@@ -128,6 +131,49 @@ class PredictionApiTests(unittest.TestCase):
         rows[0]["model_sha256"] = "0" * 64
         with self.assertRaisesRegex(ValueError, "model lineage"):
             PredictionRepository(rows, model)
+
+    def test_v3_retention_outcomes_close_the_observation_loop(self) -> None:
+        with TemporaryDirectory() as directory:
+            database = Path(directory) / "tasks.sqlite3"
+            with TestClient(
+                create_app(self.model, self.predictions, task_database_path=database)
+            ) as client:
+                prediction = client.get(
+                    "/v1/portfolio/priority", params={"limit": 1}
+                ).json()["items"][0]
+                task = client.post(
+                    "/v1/retention/tasks",
+                    json={"prediction_id": prediction["prediction_id"], "owner": "retention-team"},
+                ).json()
+                payload = {
+                    "contact_result": "REACHED",
+                    "contact_channel": "PHONE",
+                    "customer_response": "POSITIVE",
+                    "contacted_at": "2026-10-18T08:00:00Z",
+                    "observed_at": "2026-10-25T08:00:00Z",
+                    "retained_7d": True,
+                    "retained_30d": None,
+                    "note": "客户已恢复使用",
+                }
+                recorded = client.put(
+                    f"/v3/retention/tasks/{task['task_id']}/outcome", json=payload
+                )
+                fetched = client.get(f"/v3/retention/tasks/{task['task_id']}/outcome")
+                outcomes = client.get("/v3/retention/outcomes")
+                summary = client.get("/v3/retention/outcomes/summary")
+                portfolio = client.get("/v1/portfolio/summary")
+                invalid_window = client.put(
+                    f"/v3/retention/tasks/{task['task_id']}/outcome",
+                    json={**payload, "observed_at": "2026-10-17T08:00:00Z"},
+                )
+
+            self.assertEqual(200, recorded.status_code)
+            self.assertEqual(recorded.json(), fetched.json())
+            self.assertEqual(1, outcomes.json()["count"])
+            self.assertEqual(1, summary.json()["recorded_count"])
+            self.assertEqual(1.0, summary.json()["retention_7d_rate"])
+            self.assertEqual(summary.json(), portfolio.json()["retention_outcomes"])
+            self.assertEqual(422, invalid_window.status_code)
 
     def test_retention_tasks_support_bulk_reassignment(self) -> None:
         with TemporaryDirectory() as directory:

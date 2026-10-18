@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/ci.yml)
 [![Portable smoke](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/portable-smoke.yml/badge.svg)](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/portable-smoke.yml)
-![Version](https://img.shields.io/badge/version-v2.15.0-5b3f78)
+![Version](https://img.shields.io/badge/version-v3.0.0-5b3f78)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776ab)
 ![API](https://img.shields.io/badge/API-FastAPI-05998b)
 
@@ -23,7 +23,7 @@
 | 特征工程 | 时间点快照、未来信息泄漏检查、版本化特征注册表 |
 | 模型链路 | 时间切分训练、批量推理、Champion/Challenger 对比 |
 | 模型监控 | 特征 PSI、预测分布、延迟标签效果和晋级建议 |
-| 运营闭环 | 风险分层、客户优先队列、留存任务与状态时间线 |
+| 运营闭环 | 风险分层、客户优先队列、留存任务、联系结果与 7/30 天观察 |
 | 可追溯性 | 输入指纹、模型哈希、预测编号和任务事件流水 |
 
 ## 快速启动
@@ -95,12 +95,13 @@ flowchart LR
 - 回执区分输入、唯一任务和重复选择数量，防止重复勾选影响判断。
 - 后续动作按风险影响标记 P1、P2 或无需复核优先级。
 - 为每次组合处置生成审计核对、负责人联系和复核安排清单。
+- 每个任务可登记联系渠道、联系结果、客户反馈和 7/30 天留存观察，并保留结果更新时间线。
 
 ### 数据与服务
 
 - FastAPI 提供模型、预测、特征注册表、客户组合和任务接口。
-- SQLite 保存运营任务和事件流水，不依赖外部数据库。
-- 工作台集中展示模型血缘、风险分布、优先队列和任务进度。
+- SQLite 保存运营任务、事件流水和留存结果，不依赖外部数据库。
+- 工作台集中展示模型血缘、风险分布、优先队列、任务进度和结果观察率。
 
 ## 工程结构
 
@@ -146,4 +147,4 @@ docs/                    架构、模型和操作文档
 
 ## 版本与维护
 
-当前版本为 `v2.15.0`。每次发布同步维护[用户使用指南](docs/user-guide.md)、[版本记录](CHANGELOG.md)和[版本摘要](VERSION_LOG.md)。
+当前版本为 `v3.0.0`。每次发布同步维护[用户使用指南](docs/user-guide.md)、[版本记录](CHANGELOG.md)和[版本摘要](VERSION_LOG.md)。

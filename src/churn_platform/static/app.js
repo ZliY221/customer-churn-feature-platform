@@ -1,5 +1,5 @@
 const $ = selector => document.querySelector(selector)
-const state = { priority: [], tasks: [], selectedTasks: new Set(), eventCursor: 0, polling: false }
+const state = { priority: [], tasks: [], outcomes: new Map(), selectedTasks: new Set(), eventCursor: 0, polling: false }
 const bandNames = { CRITICAL: '极高风险', HIGH: '高风险', WATCH: '关注', STABLE: '稳定' }
 const statusNames = { OPEN: '待执行', IN_PROGRESS: '处理中', COMPLETED: '已完成', DISMISSED: '已关闭' }
 
@@ -14,6 +14,8 @@ async function request(path, options) {
 
 function percentage(value) { return `${(Number(value) * 100).toFixed(1)}%` }
 function customerLabel(key) { return `${key.slice(0, 8)}…${key.slice(-4)}` }
+function optionalBoolean(value) { return value === '' ? null : value === 'true' }
+function localDateTime(value) { return value ? new Date(value).toISOString().slice(0, 16) : '' }
 
 function renderRisk(summary) {
   const maximum = Math.max(...Object.values(summary.risk_bands), 1)
@@ -41,7 +43,9 @@ function renderTasks(eventCount = 0) {
   $('#task-total').textContent = `${state.tasks.length} 条 · ${eventCount} 条变更记录`
   $('#task-board').innerHTML = statuses.map(status => {
     const items = state.tasks.filter(task => task.status === status)
-    return `<div class="task-column"><h3><span>${statusNames[status]}</span><span>${items.length}</span></h3>${items.map(task => `
+    return `<div class="task-column"><h3><span>${statusNames[status]}</span><span>${items.length}</span></h3>${items.map(task => {
+      const outcome = state.outcomes.get(task.task_id)
+      return `
       <article class="task-card">
         <label class="task-select"><input type="checkbox" data-task-id="${task.task_id}" ${state.selectedTasks.has(task.task_id) ? 'checked' : ''}><strong>${customerLabel(task.customer_key)}</strong></label>
         <small>${task.playbook}</small>
@@ -49,8 +53,9 @@ function renderTasks(eventCount = 0) {
         <select class="task-status" data-id="${task.task_id}" aria-label="更新任务状态">
           ${statuses.map(option => `<option value="${option}" ${option === status ? 'selected' : ''}>${statusNames[option]}</option>`).join('')}
         </select>
-        <button class="task-history" data-id="${task.task_id}" type="button">查看时间线</button>
-      </article>`).join('')}</div>`
+        <div class="task-card-actions"><button class="task-outcome" data-id="${task.task_id}" type="button">${outcome ? '更新结果' : '登记结果'}</button><button class="task-history" data-id="${task.task_id}" type="button">查看时间线</button></div>
+        ${outcome ? `<small class="outcome-badge">${outcome.contact_result === 'REACHED' ? '已联系' : '已记录'} · 7 天${outcome.retained_7d === null ? '待观察' : outcome.retained_7d ? '留存' : '未留存'}</small>` : ''}
+      </article>`}).join('')}</div>`
   }).join('')
   $('#selected-task-count').textContent = `已选择 ${state.selectedTasks.size} 条任务`
   $('#bulk-assign-owner').disabled = state.selectedTasks.size === 0
@@ -75,9 +80,9 @@ async function load() {
     const taskQuery = new URLSearchParams({ limit: '200' })
     if ($('#task-risk-filter').value) taskQuery.set('risk_band', $('#task-risk-filter').value)
     if ($('#task-owner-filter').value) taskQuery.set('owner', $('#task-owner-filter').value)
-    const [summary, model, priority, tasks, workloads] = await Promise.all([
+    const [summary, model, priority, tasks, workloads, outcomes] = await Promise.all([
       request('/v1/portfolio/summary'), request('/v1/model'),
-      request(`/v1/portfolio/priority?limit=30${suffix}`), request(`/v1/retention/tasks?${taskQuery}`), request('/v1/retention/workloads'),
+      request(`/v1/portfolio/priority?limit=30${suffix}`), request(`/v1/retention/tasks?${taskQuery}`), request('/v1/retention/workloads'), request('/v3/retention/outcomes?limit=500'),
     ])
     $('#customer-count').textContent = summary.customer_count.toLocaleString()
     $('#predicted-count').textContent = summary.predicted_churn_count.toLocaleString()
@@ -94,6 +99,11 @@ async function load() {
     $('.lineage i').classList.add('ready')
     state.priority = priority.items
     state.tasks = tasks.items
+    state.outcomes = new Map(outcomes.items.map(item => [item.task_id, item]))
+    $('#outcome-recorded').textContent = summary.retention_outcomes.recorded_count.toLocaleString()
+    $('#outcome-reached').textContent = summary.retention_outcomes.reached_count.toLocaleString()
+    $('#outcome-retention-7d').textContent = summary.retention_outcomes.retention_7d_rate === null ? '待观察' : percentage(summary.retention_outcomes.retention_7d_rate)
+    $('#outcome-retention-30d').textContent = summary.retention_outcomes.retention_30d_rate === null ? '待观察' : percentage(summary.retention_outcomes.retention_30d_rate)
     state.selectedTasks = new Set([...state.selectedTasks].filter(taskId => tasks.items.some(task => task.task_id === taskId)))
     if (!$('#task-risk-filter').value && !$('#task-owner-filter').value) {
       const selectedOwner = $('#task-owner-filter').value
@@ -126,9 +136,52 @@ document.addEventListener('click', async event => {
     $('#history-task-id').textContent = history.task_id
     $('#history-list').innerHTML = history.items.map(item => `
       <li><span>${new Date(item.occurred_at).toLocaleString('zh-CN', { hour12: false })}</span>
-      <strong>${item.event_type === 'CREATED' ? '创建任务' : item.event_type === 'OWNER_CHANGED' ? '负责人变更' : '状态变更'}</strong>
+      <strong>${item.event_type === 'CREATED' ? '创建任务' : item.event_type === 'OWNER_CHANGED' ? '负责人变更' : item.event_type === 'OUTCOME_RECORDED' ? '登记处置结果' : '状态变更'}</strong>
       <small>${item.event_type === 'OWNER_CHANGED' ? `${item.from_owner} → ${item.to_owner}` : `${item.from_status ? `${statusNames[item.from_status]} → ` : ''}${statusNames[item.to_status]}`}</small></li>`).join('')
     $('#history-dialog').showModal()
+  } catch (error) {
+    $('#error-banner').textContent = error.message
+    $('#error-banner').hidden = false
+  }
+})
+
+document.addEventListener('click', event => {
+  const button = event.target.closest('.task-outcome')
+  if (!button) return
+  const outcome = state.outcomes.get(button.dataset.id)
+  $('#outcome-task-id').value = button.dataset.id
+  $('#outcome-task-label').textContent = button.dataset.id
+  $('#outcome-contact-result').value = outcome?.contact_result || 'REACHED'
+  $('#outcome-contact-channel').value = outcome?.contact_channel || 'PHONE'
+  $('#outcome-customer-response').value = outcome?.customer_response || 'UNKNOWN'
+  $('#outcome-contacted-at').value = localDateTime(outcome?.contacted_at || new Date())
+  $('#outcome-observed-at').value = localDateTime(outcome?.observed_at)
+  $('#outcome-retained-7d').value = outcome?.retained_7d === null || outcome?.retained_7d === undefined ? '' : String(outcome.retained_7d)
+  $('#outcome-retained-30d').value = outcome?.retained_30d === null || outcome?.retained_30d === undefined ? '' : String(outcome.retained_30d)
+  $('#outcome-note').value = outcome?.note || ''
+  $('#outcome-dialog').showModal()
+})
+
+$('#outcome-form').addEventListener('submit', async event => {
+  if (event.submitter?.value === 'cancel') return
+  event.preventDefault()
+  const taskId = $('#outcome-task-id').value
+  try {
+    await request(`/v3/retention/tasks/${taskId}/outcome`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contact_result: $('#outcome-contact-result').value,
+        contact_channel: $('#outcome-contact-channel').value,
+        customer_response: $('#outcome-customer-response').value,
+        contacted_at: new Date($('#outcome-contacted-at').value).toISOString(),
+        observed_at: $('#outcome-observed-at').value ? new Date($('#outcome-observed-at').value).toISOString() : null,
+        retained_7d: optionalBoolean($('#outcome-retained-7d').value),
+        retained_30d: optionalBoolean($('#outcome-retained-30d').value),
+        note: $('#outcome-note').value.trim() || null,
+      }),
+    })
+    $('#outcome-dialog').close()
+    await load()
   } catch (error) {
     $('#error-banner').textContent = error.message
     $('#error-banner').hidden = false

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from datetime import datetime
 import hashlib
 import json
 import math
@@ -61,6 +62,25 @@ class RetentionTaskStatusUpdate(BaseModel):
 class RetentionTaskOwnerUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     owner: str = Field(min_length=1, max_length=80)
+
+
+class RetentionOutcomeUpsert(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    contact_result: Literal["REACHED", "NO_RESPONSE", "INVALID_CONTACT", "DECLINED"]
+    contact_channel: Literal["PHONE", "SMS", "EMAIL", "IN_APP", "OTHER"]
+    customer_response: Literal["POSITIVE", "NEUTRAL", "NEGATIVE", "UNKNOWN"]
+    contacted_at: datetime
+    observed_at: datetime | None = None
+    retained_7d: bool | None = None
+    retained_30d: bool | None = None
+    note: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def validate_observation_window(self) -> "RetentionOutcomeUpsert":
+        if self.observed_at is not None and self.observed_at < self.contacted_at:
+            raise ValueError("observed_at must not be earlier than contacted_at")
+        return self
 
 
 class RetentionTaskBulkOwnerUpdate(BaseModel):
@@ -193,7 +213,7 @@ def create_app(
 
     app = FastAPI(
         title="Customer Retention Operations Platform",
-        version="2.15.0",
+        version="3.0.0",
         lifespan=lifespan,
     )
 
@@ -240,6 +260,7 @@ def create_app(
             "retention_tasks": request.app.state.task_store.status_counts(),
             "retention_event_count": request.app.state.task_store.event_count(),
             "retention_latest_event_id": request.app.state.task_store.latest_event_id(),
+            "retention_outcomes": request.app.state.task_store.outcome_summary(),
         }
 
     @app.get("/v1/portfolio/priority")
@@ -323,6 +344,48 @@ def create_app(
             "active_task_count": sum(item["active_count"] for item in items),
             "items": items,
         }
+
+    @app.get("/v3/retention/outcomes")
+    def retention_outcomes(
+        request: Request,
+        limit: Annotated[int, Query(ge=1, le=500)] = 500,
+    ) -> dict[str, Any]:
+        items = request.app.state.task_store.list_outcomes(limit=limit)
+        return {"count": len(items), "limit": limit, "items": items}
+
+    @app.get("/v3/retention/outcomes/summary")
+    def retention_outcome_summary(request: Request) -> dict[str, Any]:
+        return request.app.state.task_store.outcome_summary()
+
+    @app.get("/v3/retention/tasks/{task_id}/outcome")
+    def retention_task_outcome(task_id: str, request: Request) -> dict[str, Any]:
+        try:
+            return request.app.state.task_store.get_outcome(task_id)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="retention outcome not found") from error
+
+    @app.put("/v3/retention/tasks/{task_id}/outcome")
+    def record_retention_task_outcome(
+        task_id: str,
+        command: RetentionOutcomeUpsert,
+        request: Request,
+    ) -> dict[str, Any]:
+        try:
+            return request.app.state.task_store.upsert_outcome(
+                task_id,
+                contact_result=command.contact_result,
+                contact_channel=command.contact_channel,
+                customer_response=command.customer_response,
+                contacted_at=command.contacted_at.isoformat(),
+                observed_at=command.observed_at.isoformat() if command.observed_at else None,
+                retained_7d=command.retained_7d,
+                retained_30d=command.retained_30d,
+                note=command.note,
+            )
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="retention task not found") from error
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
 
     @app.get("/v1/retention/events")
     def retention_events(

@@ -10,6 +10,9 @@ from uuid import uuid4
 
 
 TASK_STATUSES = {"OPEN", "IN_PROGRESS", "COMPLETED", "DISMISSED"}
+CONTACT_RESULTS = {"REACHED", "NO_RESPONSE", "INVALID_CONTACT", "DECLINED"}
+CONTACT_CHANNELS = {"PHONE", "SMS", "EMAIL", "IN_APP", "OTHER"}
+CUSTOMER_RESPONSES = {"POSITIVE", "NEUTRAL", "NEGATIVE", "UNKNOWN"}
 
 
 class RetentionTaskStore:
@@ -46,6 +49,23 @@ class RetentionTaskStore:
             );
             CREATE INDEX IF NOT EXISTS idx_retention_task_events_task
                 ON retention_task_events(task_id, event_id);
+            CREATE TABLE IF NOT EXISTS retention_outcomes (
+                outcome_id TEXT PRIMARY KEY,
+                task_id TEXT NOT NULL UNIQUE,
+                contact_result TEXT NOT NULL,
+                contact_channel TEXT NOT NULL,
+                customer_response TEXT NOT NULL,
+                contacted_at TEXT NOT NULL,
+                observed_at TEXT,
+                retained_7d INTEGER,
+                retained_30d INTEGER,
+                note TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(task_id) REFERENCES retention_tasks(task_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_retention_outcomes_updated
+                ON retention_outcomes(updated_at DESC);
             """
         )
         event_columns = {
@@ -352,4 +372,129 @@ class RetentionTaskStore:
             """
         ).fetchall()
         return [dict(row) for row in rows]
+
+    def upsert_outcome(
+        self,
+        task_id: str,
+        *,
+        contact_result: str,
+        contact_channel: str,
+        customer_response: str,
+        contacted_at: str,
+        observed_at: str | None = None,
+        retained_7d: bool | None = None,
+        retained_30d: bool | None = None,
+        note: str | None = None,
+    ) -> dict[str, Any]:
+        """Create or replace the observed result for one retention task."""
+        task = self.get(task_id)
+        if contact_result not in CONTACT_RESULTS:
+            raise ValueError("unsupported contact result")
+        if contact_channel not in CONTACT_CHANNELS:
+            raise ValueError("unsupported contact channel")
+        if customer_response not in CUSTOMER_RESPONSES:
+            raise ValueError("unsupported customer response")
+        normalized_note = note.strip() if note is not None else None
+        if normalized_note == "":
+            normalized_note = None
+        if normalized_note is not None and len(normalized_note) > 500:
+            raise ValueError("note must not exceed 500 characters")
+        now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        existing = self.connection.execute(
+            "SELECT outcome_id, created_at FROM retention_outcomes WHERE task_id = ?",
+            (task_id,),
+        ).fetchone()
+        outcome_id = existing["outcome_id"] if existing else "out-" + uuid4().hex[:16]
+        created_at = existing["created_at"] if existing else now
+        with self.connection:
+            self.connection.execute(
+                """
+                INSERT INTO retention_outcomes (
+                    outcome_id, task_id, contact_result, contact_channel,
+                    customer_response, contacted_at, observed_at, retained_7d,
+                    retained_30d, note, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(task_id) DO UPDATE SET
+                    contact_result = excluded.contact_result,
+                    contact_channel = excluded.contact_channel,
+                    customer_response = excluded.customer_response,
+                    contacted_at = excluded.contacted_at,
+                    observed_at = excluded.observed_at,
+                    retained_7d = excluded.retained_7d,
+                    retained_30d = excluded.retained_30d,
+                    note = excluded.note,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    outcome_id,
+                    task_id,
+                    contact_result,
+                    contact_channel,
+                    customer_response,
+                    contacted_at,
+                    observed_at,
+                    None if retained_7d is None else int(retained_7d),
+                    None if retained_30d is None else int(retained_30d),
+                    normalized_note,
+                    created_at,
+                    now,
+                ),
+            )
+            self.connection.execute(
+                """INSERT INTO retention_task_events (
+                       task_id, event_type, from_status, to_status, occurred_at,
+                       from_owner, to_owner
+                   ) VALUES (?, 'OUTCOME_RECORDED', ?, ?, ?, ?, ?)""",
+                (task_id, task["status"], task["status"], now, task["owner"], task["owner"]),
+            )
+        return self.get_outcome(task_id)
+
+    def get_outcome(self, task_id: str) -> dict[str, Any]:
+        self.get(task_id)
+        row = self.connection.execute(
+            "SELECT * FROM retention_outcomes WHERE task_id = ?", (task_id,)
+        ).fetchone()
+        if row is None:
+            raise KeyError(task_id)
+        return self._serialize_outcome(row)
+
+    def list_outcomes(self, *, limit: int = 500) -> list[dict[str, Any]]:
+        rows = self.connection.execute(
+            "SELECT * FROM retention_outcomes ORDER BY updated_at DESC LIMIT ?", (limit,)
+        ).fetchall()
+        return [self._serialize_outcome(row) for row in rows]
+
+    def outcome_summary(self) -> dict[str, Any]:
+        row = self.connection.execute(
+            """
+            SELECT COUNT(*) AS recorded_count,
+                   SUM(CASE WHEN contact_result = 'REACHED' THEN 1 ELSE 0 END) AS reached_count,
+                   SUM(CASE WHEN retained_7d IS NOT NULL THEN 1 ELSE 0 END) AS observed_7d_count,
+                   SUM(CASE WHEN retained_7d = 1 THEN 1 ELSE 0 END) AS retained_7d_count,
+                   SUM(CASE WHEN retained_30d IS NOT NULL THEN 1 ELSE 0 END) AS observed_30d_count,
+                   SUM(CASE WHEN retained_30d = 1 THEN 1 ELSE 0 END) AS retained_30d_count
+            FROM retention_outcomes
+            """
+        ).fetchone()
+        summary = {key: int(row[key] or 0) for key in row.keys()}
+        summary["retention_7d_rate"] = (
+            summary["retained_7d_count"] / summary["observed_7d_count"]
+            if summary["observed_7d_count"]
+            else None
+        )
+        summary["retention_30d_rate"] = (
+            summary["retained_30d_count"] / summary["observed_30d_count"]
+            if summary["observed_30d_count"]
+            else None
+        )
+        return summary
+
+    @staticmethod
+    def _serialize_outcome(row: sqlite3.Row) -> dict[str, Any]:
+        item = dict(row)
+        item["retained_7d"] = None if item["retained_7d"] is None else bool(item["retained_7d"])
+        item["retained_30d"] = (
+            None if item["retained_30d"] is None else bool(item["retained_30d"])
+        )
+        return item
 
