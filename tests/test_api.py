@@ -250,6 +250,8 @@ class PredictionApiTests(unittest.TestCase):
             self.assertEqual("晚间高风险客户跟进", response.json()["audit"]["operator_note"])
             self.assertEqual(2, sum(response.json()["impact"]["risk_band_counts"].values()))
             self.assertGreaterEqual(response.json()["impact"]["high_priority_count"], 0)
+            self.assertTrue(response.json()["follow_up"]["required"])
+            self.assertIn(response.json()["follow_up"]["review_window_hours"], {4, 24})
             self.assertIsNotNone(response.json()["audit"]["first_new_event_id"])
             self.assertEqual(2, len(response.json()["changes"]))
             self.assertEqual(
@@ -263,6 +265,8 @@ class PredictionApiTests(unittest.TestCase):
                 response.json()["audit"]["receipt_id"], repeated.json()["audit"]["receipt_id"]
             )
             self.assertEqual([], repeated.json()["changes"])
+            self.assertEqual("REVIEW_NO_CHANGE_SELECTION", repeated.json()["follow_up"]["next_action"])
+            self.assertFalse(repeated.json()["follow_up"]["required"])
             self.assertEqual(3, events.json()["count"])
 
 

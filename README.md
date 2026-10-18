@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/ci.yml)
 [![Portable smoke](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/portable-smoke.yml/badge.svg)](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/portable-smoke.yml)
-![Version](https://img.shields.io/badge/version-v2.7.0-285846)
+![Version](https://img.shields.io/badge/version-v2.8.0-285846)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776ab)
 ![API](https://img.shields.io/badge/API-FastAPI-05998b)
 
@@ -90,6 +90,7 @@ flowchart LR
 - 组合执行返回新增事件数量与事件游标范围，便于核对实时同步和审计完整性。
 - 组合执行支持填写操作备注，并随审计回执返回，便于说明批量处置背景。
 - 执行结果按四档风险统计影响范围，并突出极高风险与高风险任务数量。
+- 根据实际变更与风险影响生成下一步动作和 4/24 小时复核窗口。
 
 ### 数据与服务
 

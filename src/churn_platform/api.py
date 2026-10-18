@@ -547,6 +547,16 @@ def create_app(
             band: sum(item.get("risk_band") == band for item in items)
             for band in ("CRITICAL", "HIGH", "WATCH", "STABLE")
         }
+        high_priority_count = risk_band_counts["CRITICAL"] + risk_band_counts["HIGH"]
+        follow_up = {
+            "required": changed_count > 0,
+            "next_action": (
+                "REVIEW_NO_CHANGE_SELECTION" if changed_count == 0
+                else "CONTACT_HIGH_PRIORITY_CUSTOMERS" if high_priority_count > 0
+                else "MONITOR_TASK_PROGRESS"
+            ),
+            "review_window_hours": None if changed_count == 0 else 4 if high_priority_count > 0 else 24,
+        }
         return {
             "count": len(items),
             "changed_count": changed_count,
@@ -562,8 +572,9 @@ def create_app(
             },
             "impact": {
                 "risk_band_counts": risk_band_counts,
-                "high_priority_count": risk_band_counts["CRITICAL"] + risk_band_counts["HIGH"],
+                "high_priority_count": high_priority_count,
             },
+            "follow_up": follow_up,
             "changes": changes,
             "items": items,
         }

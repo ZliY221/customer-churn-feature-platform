@@ -246,7 +246,8 @@ $('#bulk-assign-start').addEventListener('click', async () => {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
     })
     const changedFields = result.changes.reduce((total, change) => total + change.changed_fields.length, 0)
-    $('#bulk-action-result').textContent = `回执 ${result.audit.receipt_id} · 已更新 ${result.changed_count} 条 · 高优先级 ${result.impact.high_priority_count} 条 · 分派 ${result.owner_changed_count} 条 · 推进 ${result.status_changed_count} 条 · ${changedFields} 个字段变化 · 新增审计事件 ${result.audit.events_created_count} 条`
+    const followUp = result.follow_up.required ? `下一步 ${result.follow_up.next_action}（${result.follow_up.review_window_hours} 小时内）` : `下一步 ${result.follow_up.next_action}`
+    $('#bulk-action-result').textContent = `回执 ${result.audit.receipt_id} · 已更新 ${result.changed_count} 条 · 高优先级 ${result.impact.high_priority_count} 条 · ${followUp} · 分派 ${result.owner_changed_count} 条 · 推进 ${result.status_changed_count} 条 · ${changedFields} 个字段变化 · 新增审计事件 ${result.audit.events_created_count} 条`
     state.selectedTasks.clear(); $('#bulk-task-owner').value = ''; $('#bulk-task-note').value = ''; await load()
   } catch (error) { $('#error-banner').textContent = error.message; $('#error-banner').hidden = false }
 })
