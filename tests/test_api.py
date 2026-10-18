@@ -234,7 +234,8 @@ class PredictionApiTests(unittest.TestCase):
                     "prediction_id": item["prediction_id"], "owner": "retention-team"
                 }).json() for item in predictions]
                 payload = {"task_ids": [item["task_id"] for item in tasks],
-                           "owner": "priority-desk", "status": "IN_PROGRESS"}
+                           "owner": "priority-desk", "status": "IN_PROGRESS",
+                           "operator_note": "晚间高风险客户跟进"}
                 response = client.patch("/v2/retention/tasks/bulk", json=payload)
                 repeated = client.patch("/v2/retention/tasks/bulk", json=payload)
                 events = client.get(f"/v1/retention/tasks/{tasks[0]['task_id']}/events")
@@ -246,6 +247,7 @@ class PredictionApiTests(unittest.TestCase):
             self.assertEqual(0, repeated.json()["changed_count"])
             self.assertEqual(4, response.json()["audit"]["events_created_count"])
             self.assertRegex(response.json()["audit"]["receipt_id"], r"^RET-[0-9A-F]{12}$")
+            self.assertEqual("晚间高风险客户跟进", response.json()["audit"]["operator_note"])
             self.assertIsNotNone(response.json()["audit"]["first_new_event_id"])
             self.assertEqual(2, len(response.json()["changes"]))
             self.assertEqual(

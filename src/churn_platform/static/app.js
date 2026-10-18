@@ -240,14 +240,14 @@ $('#bulk-assign-start').addEventListener('click', async () => {
   const owner = $('#bulk-task-owner').value.trim()
   if (!owner || state.selectedTasks.size === 0) return
   try {
-    const payload = { task_ids: [...state.selectedTasks], owner, status: 'IN_PROGRESS' }
+    const payload = { task_ids: [...state.selectedTasks], owner, status: 'IN_PROGRESS', operator_note: $('#bulk-task-note').value.trim() || null }
     if (!await confirmBulkOperation(payload, `分派给 ${owner} 并开始处理`)) return
     const result = await request('/v2/retention/tasks/bulk', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
     })
     const changedFields = result.changes.reduce((total, change) => total + change.changed_fields.length, 0)
     $('#bulk-action-result').textContent = `回执 ${result.audit.receipt_id} · 已更新 ${result.changed_count} 条 · 分派 ${result.owner_changed_count} 条 · 推进 ${result.status_changed_count} 条 · ${changedFields} 个字段变化 · 新增审计事件 ${result.audit.events_created_count} 条`
-    state.selectedTasks.clear(); $('#bulk-task-owner').value = ''; await load()
+    state.selectedTasks.clear(); $('#bulk-task-owner').value = ''; $('#bulk-task-note').value = ''; await load()
   } catch (error) { $('#error-banner').textContent = error.message; $('#error-banner').hidden = false }
 })
 

@@ -93,6 +93,14 @@ class RetentionTaskBulkPreview(BaseModel):
 class RetentionTaskBulkCommand(RetentionTaskBulkPreview):
     """Validated combined bulk command used by the v2 operations workflow."""
 
+    operator_note: str | None = Field(default=None, max_length=200)
+
+    @model_validator(mode="after")
+    def normalize_note(self) -> "RetentionTaskBulkCommand":
+        if self.operator_note is not None and not self.operator_note.strip():
+            raise ValueError("operator_note must not be blank")
+        return self
+
 
 class PredictionRepository:
     def __init__(self, rows: list[dict[str, Any]], model: dict[str, Any]) -> None:
@@ -532,6 +540,7 @@ def create_app(
             "status": command.status,
             "first_new_event_id": previous_event_id + 1 if latest_event_id > previous_event_id else None,
             "latest_event_id": latest_event_id,
+            "operator_note": command.operator_note.strip() if command.operator_note else None,
         }, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
         receipt_id = "RET-" + hashlib.sha256(receipt_payload.encode("utf-8")).hexdigest()[:12].upper()
         return {
@@ -545,6 +554,7 @@ def create_app(
                 "events_created_count": latest_event_id - previous_event_id,
                 "first_new_event_id": previous_event_id + 1 if latest_event_id > previous_event_id else None,
                 "latest_event_id": latest_event_id,
+                "operator_note": command.operator_note.strip() if command.operator_note else None,
             },
             "changes": changes,
             "items": items,
