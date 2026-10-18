@@ -248,6 +248,8 @@ class PredictionApiTests(unittest.TestCase):
             self.assertEqual(4, response.json()["audit"]["events_created_count"])
             self.assertRegex(response.json()["audit"]["receipt_id"], r"^RET-[0-9A-F]{12}$")
             self.assertEqual("晚间高风险客户跟进", response.json()["audit"]["operator_note"])
+            self.assertEqual(2, sum(response.json()["impact"]["risk_band_counts"].values()))
+            self.assertGreaterEqual(response.json()["impact"]["high_priority_count"], 0)
             self.assertIsNotNone(response.json()["audit"]["first_new_event_id"])
             self.assertEqual(2, len(response.json()["changes"]))
             self.assertEqual(

@@ -543,6 +543,10 @@ def create_app(
             "operator_note": command.operator_note.strip() if command.operator_note else None,
         }, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
         receipt_id = "RET-" + hashlib.sha256(receipt_payload.encode("utf-8")).hexdigest()[:12].upper()
+        risk_band_counts = {
+            band: sum(item.get("risk_band") == band for item in items)
+            for band in ("CRITICAL", "HIGH", "WATCH", "STABLE")
+        }
         return {
             "count": len(items),
             "changed_count": changed_count,
@@ -555,6 +559,10 @@ def create_app(
                 "first_new_event_id": previous_event_id + 1 if latest_event_id > previous_event_id else None,
                 "latest_event_id": latest_event_id,
                 "operator_note": command.operator_note.strip() if command.operator_note else None,
+            },
+            "impact": {
+                "risk_band_counts": risk_band_counts,
+                "high_priority_count": risk_band_counts["CRITICAL"] + risk_band_counts["HIGH"],
             },
             "changes": changes,
             "items": items,
