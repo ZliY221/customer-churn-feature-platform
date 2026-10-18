@@ -569,6 +569,15 @@ def create_app(
             if high_priority_count > 0:
                 handoff_checklist.append("CONTACT_HIGH_PRIORITY_CUSTOMERS")
             handoff_checklist.append("SCHEDULE_REVIEW")
+        if not follow_up["required"]:
+            handoff_readiness = "SELECTION_REVIEW"
+            handoff_blockers = ["NO_EFFECTIVE_CHANGE"]
+        elif high_priority_count > 0:
+            handoff_readiness = "ESCALATION_REQUIRED"
+            handoff_blockers = ["HIGH_PRIORITY_CONTACT_REQUIRED"]
+        else:
+            handoff_readiness = "READY_FOR_FOLLOW_UP"
+            handoff_blockers = []
         return {
             "count": len(items),
             "selection": {
@@ -599,6 +608,8 @@ def create_app(
                 "checklist": handoff_checklist,
                 "step_count": len(handoff_checklist),
                 "estimated_minutes": len(handoff_checklist) * 5,
+                "readiness": handoff_readiness,
+                "blockers": handoff_blockers,
             },
             "changes": changes,
             "items": items,

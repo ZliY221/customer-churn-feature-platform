@@ -260,6 +260,10 @@ class PredictionApiTests(unittest.TestCase):
             self.assertIn("SCHEDULE_REVIEW", response.json()["handoff"]["checklist"])
             self.assertEqual(len(response.json()["handoff"]["checklist"]), response.json()["handoff"]["step_count"])
             self.assertEqual(response.json()["handoff"]["step_count"] * 5, response.json()["handoff"]["estimated_minutes"])
+            expected_readiness = "ESCALATION_REQUIRED" if response.json()["impact"]["high_priority_count"] else "READY_FOR_FOLLOW_UP"
+            expected_blockers = ["HIGH_PRIORITY_CONTACT_REQUIRED"] if response.json()["impact"]["high_priority_count"] else []
+            self.assertEqual(expected_readiness, response.json()["handoff"]["readiness"])
+            self.assertEqual(expected_blockers, response.json()["handoff"]["blockers"])
             self.assertIsNotNone(response.json()["audit"]["first_new_event_id"])
             self.assertEqual(2, len(response.json()["changes"]))
             self.assertEqual(
@@ -280,6 +284,8 @@ class PredictionApiTests(unittest.TestCase):
             self.assertEqual(["REVIEW_SELECTION"], repeated.json()["handoff"]["checklist"])
             self.assertEqual(1, repeated.json()["handoff"]["step_count"])
             self.assertEqual(5, repeated.json()["handoff"]["estimated_minutes"])
+            self.assertEqual("SELECTION_REVIEW", repeated.json()["handoff"]["readiness"])
+            self.assertEqual(["NO_EFFECTIVE_CHANGE"], repeated.json()["handoff"]["blockers"])
             self.assertEqual(3, events.json()["count"])
 
 
