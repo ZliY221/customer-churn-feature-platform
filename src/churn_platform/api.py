@@ -350,6 +350,13 @@ def create_app(
         items = request.app.state.task_store.strategy_summary()
         return {"strategy_count": len(items), "items": items}
 
+    @app.get("/v3/retention/sla")
+    def retention_sla(
+        request: Request,
+        target_hours: Annotated[int, Query(ge=1, le=168)] = 24,
+    ) -> dict[str, Any]:
+        return request.app.state.task_store.task_sla_summary(target_hours=target_hours)
+
     @app.get("/v3/retention/outcomes")
     def retention_outcomes(
         request: Request,

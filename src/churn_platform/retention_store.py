@@ -386,6 +386,31 @@ class RetentionTaskStore:
         ).fetchall()
         return [dict(row) for row in rows]
 
+    def task_sla_summary(self, *, observed_at: datetime | None = None,
+                         target_hours: int = 24) -> dict[str, Any]:
+        """Classify active retention tasks against a bounded response target."""
+        if target_hours <= 0:
+            raise ValueError("target_hours must be positive")
+        now = observed_at or datetime.now(UTC)
+        if now.tzinfo is None:
+            raise ValueError("observed_at must be timezone-aware")
+        rows = self.connection.execute(
+            "SELECT task_id, created_at FROM retention_tasks WHERE status IN ('OPEN', 'IN_PROGRESS')"
+        ).fetchall()
+        overdue = 0
+        due_soon = 0
+        for row in rows:
+            created = datetime.fromisoformat(str(row["created_at"]).replace("Z", "+00:00"))
+            remaining = target_hours - (now - created).total_seconds() / 3600
+            overdue += int(remaining <= 0)
+            due_soon += int(0 < remaining <= 4)
+        return {
+            "active_count": len(rows), "overdue_count": overdue,
+            "due_soon_count": due_soon,
+            "on_track_count": len(rows) - overdue - due_soon,
+            "target_hours": target_hours,
+        }
+
     def upsert_outcome(
         self,
         task_id: str,
