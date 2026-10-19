@@ -42,3 +42,14 @@ class RetentionInsightTests(unittest.TestCase):
             self.assertEqual(1.0, item["retention_7d_rate"])
             self.assertIsNone(item["retention_30d_rate"])
             store.close()
+
+    def test_model_effectiveness_keeps_lineage_and_risk_band(self):
+        with TemporaryDirectory() as directory:
+            store = RetentionTaskStore(Path(directory) / "tasks.sqlite3")
+            task = store.create(prediction_id="p1", customer_key="c1", model_sha256="b" * 64, risk_band="CRITICAL", owner="team", playbook="call")
+            store.upsert_outcome(task["task_id"], contact_result="REACHED", contact_channel="PHONE", customer_response="POSITIVE", contacted_at="2026-09-01T00:00:00Z", retained_30d=True)
+            item = store.model_effectiveness()[0]
+            self.assertEqual("b" * 64, item["model_sha256"])
+            self.assertEqual("CRITICAL", item["risk_band"])
+            self.assertEqual(1.0, item["retention_30d_rate"])
+            store.close()

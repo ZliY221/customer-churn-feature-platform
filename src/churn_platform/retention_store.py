@@ -548,6 +548,25 @@ class RetentionTaskStore:
             items.append(item)
         return items
 
+    def model_effectiveness(self) -> list[dict[str, Any]]:
+        """Link model lineage and risk bands to observed retention results."""
+        rows = self.connection.execute(
+            """
+            SELECT t.model_sha256, t.risk_band, COUNT(*) AS task_count,
+                   SUM(CASE WHEN o.retained_30d IS NOT NULL THEN 1 ELSE 0 END) AS observed_30d_count,
+                   SUM(CASE WHEN o.retained_30d = 1 THEN 1 ELSE 0 END) AS retained_30d_count
+            FROM retention_tasks t LEFT JOIN retention_outcomes o ON o.task_id = t.task_id
+            GROUP BY t.model_sha256, t.risk_band
+            ORDER BY t.model_sha256, t.risk_band
+            """
+        ).fetchall()
+        items: list[dict[str, Any]] = []
+        for row in rows:
+            item = dict(row)
+            item["retention_30d_rate"] = item["retained_30d_count"] / item["observed_30d_count"] if item["observed_30d_count"] else None
+            items.append(item)
+        return items
+
     @staticmethod
     def _serialize_outcome(row: sqlite3.Row) -> dict[str, Any]:
         item = dict(row)

@@ -374,6 +374,11 @@ def create_app(
         items = request.app.state.task_store.strategy_effectiveness()
         return {"strategy_count": len(items), "items": items}
 
+    @app.get("/v3/retention/outcomes/by-model-risk")
+    def retention_outcomes_by_model_risk(request: Request) -> dict[str, Any]:
+        items = request.app.state.task_store.model_effectiveness()
+        return {"segment_count": len(items), "items": items}
+
     @app.get("/v3/retention/tasks/{task_id}/outcome")
     def retention_task_outcome(task_id: str, request: Request) -> dict[str, Any]:
         try:
