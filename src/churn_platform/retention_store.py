@@ -527,6 +527,27 @@ class RetentionTaskStore:
         )
         return summary
 
+    def strategy_effectiveness(self) -> list[dict[str, Any]]:
+        """Compare mature retention observations across execution strategies."""
+        rows = self.connection.execute(
+            """
+            SELECT t.playbook AS strategy, COUNT(o.outcome_id) AS recorded_count,
+                   SUM(CASE WHEN o.retained_7d IS NOT NULL THEN 1 ELSE 0 END) AS observed_7d_count,
+                   SUM(CASE WHEN o.retained_7d = 1 THEN 1 ELSE 0 END) AS retained_7d_count,
+                   SUM(CASE WHEN o.retained_30d IS NOT NULL THEN 1 ELSE 0 END) AS observed_30d_count,
+                   SUM(CASE WHEN o.retained_30d = 1 THEN 1 ELSE 0 END) AS retained_30d_count
+            FROM retention_tasks t LEFT JOIN retention_outcomes o ON o.task_id = t.task_id
+            GROUP BY t.playbook ORDER BY recorded_count DESC, t.playbook
+            """
+        ).fetchall()
+        items: list[dict[str, Any]] = []
+        for row in rows:
+            item = {key: int(row[key] or 0) if key != "strategy" else row[key] for key in row.keys()}
+            item["retention_7d_rate"] = item["retained_7d_count"] / item["observed_7d_count"] if item["observed_7d_count"] else None
+            item["retention_30d_rate"] = item["retained_30d_count"] / item["observed_30d_count"] if item["observed_30d_count"] else None
+            items.append(item)
+        return items
+
     @staticmethod
     def _serialize_outcome(row: sqlite3.Row) -> dict[str, Any]:
         item = dict(row)

@@ -369,6 +369,11 @@ def create_app(
     def retention_outcome_summary(request: Request) -> dict[str, Any]:
         return request.app.state.task_store.outcome_summary()
 
+    @app.get("/v3/retention/outcomes/by-strategy")
+    def retention_outcomes_by_strategy(request: Request) -> dict[str, Any]:
+        items = request.app.state.task_store.strategy_effectiveness()
+        return {"strategy_count": len(items), "items": items}
+
     @app.get("/v3/retention/tasks/{task_id}/outcome")
     def retention_task_outcome(task_id: str, request: Request) -> dict[str, Any]:
         try:

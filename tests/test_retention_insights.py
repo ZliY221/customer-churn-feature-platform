@@ -32,3 +32,13 @@ class RetentionInsightTests(unittest.TestCase):
             self.assertEqual(1, summary["due_soon_count"])
             self.assertEqual(0, summary["on_track_count"])
             store.close()
+
+    def test_strategy_effectiveness_uses_only_mature_observations(self):
+        with TemporaryDirectory() as directory:
+            store = RetentionTaskStore(Path(directory) / "tasks.sqlite3")
+            task = store.create(prediction_id="p1", customer_key="c1", model_sha256="a" * 64, risk_band="HIGH", owner="team", playbook="priority-call")
+            store.upsert_outcome(task["task_id"], contact_result="REACHED", contact_channel="PHONE", customer_response="POSITIVE", contacted_at="2026-10-01T00:00:00Z", retained_7d=True)
+            item = store.strategy_effectiveness()[0]
+            self.assertEqual(1.0, item["retention_7d_rate"])
+            self.assertIsNone(item["retention_30d_rate"])
+            store.close()
