@@ -373,6 +373,19 @@ class RetentionTaskStore:
         ).fetchall()
         return [dict(row) for row in rows]
 
+    def strategy_summary(self) -> list[dict[str, Any]]:
+        """Summarize task volume and completion by the configured playbook."""
+        rows = self.connection.execute(
+            """
+            SELECT playbook AS strategy, COUNT(*) AS task_count,
+                   SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) AS completed_count,
+                   SUM(CASE WHEN risk_band IN ('CRITICAL', 'HIGH') THEN 1 ELSE 0 END) AS high_priority_count
+            FROM retention_tasks GROUP BY playbook
+            ORDER BY high_priority_count DESC, task_count DESC, playbook
+            """
+        ).fetchall()
+        return [dict(row) for row in rows]
+
     def upsert_outcome(
         self,
         task_id: str,

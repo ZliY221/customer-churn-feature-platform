@@ -345,6 +345,11 @@ def create_app(
             "items": items,
         }
 
+    @app.get("/v3/retention/strategies")
+    def retention_strategies(request: Request) -> dict[str, Any]:
+        items = request.app.state.task_store.strategy_summary()
+        return {"strategy_count": len(items), "items": items}
+
     @app.get("/v3/retention/outcomes")
     def retention_outcomes(
         request: Request,
