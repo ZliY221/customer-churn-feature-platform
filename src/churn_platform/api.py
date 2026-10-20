@@ -379,6 +379,13 @@ def create_app(
         items = request.app.state.task_store.model_effectiveness()
         return {"segment_count": len(items), "items": items}
 
+    @app.get("/v3/retention/priority-queue")
+    def retention_priority_queue(
+        request: Request, limit: Annotated[int, Query(ge=1, le=500)] = 50
+    ) -> dict[str, Any]:
+        items = request.app.state.task_store.priority_queue(limit=limit)
+        return {"count": len(items), "items": items}
+
     @app.get("/v3/retention/tasks/{task_id}/outcome")
     def retention_task_outcome(task_id: str, request: Request) -> dict[str, Any]:
         try:

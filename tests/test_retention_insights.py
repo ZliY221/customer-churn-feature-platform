@@ -53,3 +53,11 @@ class RetentionInsightTests(unittest.TestCase):
             self.assertEqual("CRITICAL", item["risk_band"])
             self.assertEqual(1.0, item["retention_30d_rate"])
             store.close()
+
+    def test_priority_queue_orders_critical_before_watch(self):
+        with TemporaryDirectory() as directory:
+            store = RetentionTaskStore(Path(directory) / "tasks.sqlite3")
+            store.create(prediction_id="p1", customer_key="c1", model_sha256="a" * 64, risk_band="WATCH", owner="team", playbook="message")
+            store.create(prediction_id="p2", customer_key="c2", model_sha256="a" * 64, risk_band="CRITICAL", owner="team", playbook="call")
+            self.assertEqual("CRITICAL", store.priority_queue()[0]["risk_band"])
+            store.close()

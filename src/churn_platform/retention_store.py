@@ -567,6 +567,19 @@ class RetentionTaskStore:
             items.append(item)
         return items
 
+    def priority_queue(self, *, limit: int = 50) -> list[dict[str, Any]]:
+        """Return an explainable queue ordered by risk and task age."""
+        if limit < 1 or limit > 500:
+            raise ValueError("limit must be between 1 and 500")
+        rows = self.connection.execute(
+            """SELECT *, CASE risk_band WHEN 'CRITICAL' THEN 4 WHEN 'HIGH' THEN 3
+                      WHEN 'WATCH' THEN 2 ELSE 1 END AS risk_score
+               FROM retention_tasks WHERE status IN ('OPEN', 'IN_PROGRESS')
+               ORDER BY risk_score DESC, created_at, task_id LIMIT ?""", (limit,)
+        ).fetchall()
+        return [{**dict(row), "priority_reason": f"{row['risk_band']} risk / {row['status']} task"}
+                for row in rows]
+
     @staticmethod
     def _serialize_outcome(row: sqlite3.Row) -> dict[str, Any]:
         item = dict(row)
