@@ -601,6 +601,19 @@ class RetentionTaskStore:
                 "minimum_for_high": 100,
                 "decision_note": "Use mature 30-day outcomes before changing strategy"}
 
+    def owner_capacity(self, *, target_per_owner: int = 20) -> list[dict[str, Any]]:
+        """Compare active workload with an explicit operator capacity target."""
+        if target_per_owner < 1:
+            raise ValueError("target_per_owner must be positive")
+        items = []
+        for row in self.owner_workloads():
+            active = int(row["active_count"])
+            remaining = target_per_owner - active
+            items.append({**row, "target_capacity": target_per_owner,
+                          "remaining_capacity": remaining,
+                          "capacity_status": "OVERLOADED" if remaining < 0 else "NEAR_LIMIT" if remaining <= 3 else "AVAILABLE"})
+        return sorted(items, key=lambda item: (item["remaining_capacity"], item["owner"]))
+
     @staticmethod
     def _serialize_outcome(row: sqlite3.Row) -> dict[str, Any]:
         item = dict(row)

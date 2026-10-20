@@ -397,6 +397,14 @@ def create_app(
     def retention_outcome_confidence(request: Request) -> dict[str, Any]:
         return request.app.state.task_store.outcome_confidence()
 
+    @app.get("/v3/retention/capacity")
+    def retention_capacity(
+        request: Request,
+        target_per_owner: Annotated[int, Query(ge=1, le=500)] = 20,
+    ) -> dict[str, Any]:
+        items = request.app.state.task_store.owner_capacity(target_per_owner=target_per_owner)
+        return {"owner_count": len(items), "target_per_owner": target_per_owner, "items": items}
+
     @app.get("/v3/retention/tasks/{task_id}/outcome")
     def retention_task_outcome(task_id: str, request: Request) -> dict[str, Any]:
         try:

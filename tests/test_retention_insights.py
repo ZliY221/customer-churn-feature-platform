@@ -77,3 +77,13 @@ class RetentionInsightTests(unittest.TestCase):
             self.assertEqual("LOW", store.outcome_confidence()["confidence"])
             self.assertEqual(30, store.outcome_confidence()["minimum_for_medium"])
             store.close()
+
+    def test_owner_capacity_highlights_overload(self):
+        with TemporaryDirectory() as directory:
+            store = RetentionTaskStore(Path(directory) / "tasks.sqlite3")
+            for index in range(3):
+                store.create(prediction_id=f"p{index}", customer_key=f"c{index}", model_sha256="a" * 64, risk_band="HIGH", owner="team", playbook="call")
+            item = store.owner_capacity(target_per_owner=2)[0]
+            self.assertEqual("OVERLOADED", item["capacity_status"])
+            self.assertEqual(-1, item["remaining_capacity"])
+            store.close()
