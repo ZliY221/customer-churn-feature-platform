@@ -625,6 +625,18 @@ class RetentionTaskStore:
                 "contact_allowed": allowed, "recommended_start_hour": next_hour,
                 "reason": "within contact window" if allowed else "outside 09:00-20:00 contact window"}
 
+    def queue_forecast(self, *, handling_rate_per_hour: int, horizon_hours: int = 8) -> dict[str, Any]:
+        """Forecast whether active tasks fit inside the available handling horizon."""
+        if handling_rate_per_hour < 1 or horizon_hours < 1 or horizon_hours > 168:
+            raise ValueError("handling rate and horizon must be positive")
+        active = len(self.priority_queue(limit=500))
+        capacity = handling_rate_per_hour * horizon_hours
+        remaining = max(0, active - capacity)
+        return {"active_tasks": active, "handling_rate_per_hour": handling_rate_per_hour,
+                "horizon_hours": horizon_hours, "capacity": capacity,
+                "forecast_remaining": remaining,
+                "status": "CAPACITY_GAP" if remaining else "ON_TRACK"}
+
     @staticmethod
     def _serialize_outcome(row: sqlite3.Row) -> dict[str, Any]:
         item = dict(row)

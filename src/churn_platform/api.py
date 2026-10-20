@@ -415,6 +415,14 @@ def create_app(
         except KeyError as error:
             raise HTTPException(status_code=404, detail="retention task not found") from error
 
+    @app.get("/v3/retention/queue-forecast")
+    def retention_queue_forecast(
+        request: Request,
+        handling_rate_per_hour: Annotated[int, Query(ge=1, le=500)],
+        horizon_hours: Annotated[int, Query(ge=1, le=168)] = 8,
+    ) -> dict[str, Any]:
+        return request.app.state.task_store.queue_forecast(handling_rate_per_hour=handling_rate_per_hour, horizon_hours=horizon_hours)
+
     @app.get("/v3/retention/tasks/{task_id}/outcome")
     def retention_task_outcome(task_id: str, request: Request) -> dict[str, Any]:
         try:
