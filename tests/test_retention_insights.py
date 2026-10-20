@@ -70,3 +70,10 @@ class RetentionInsightTests(unittest.TestCase):
             self.assertEqual("PHONE", action["recommended_channel"])
             self.assertTrue(action["requires_review"])
             store.close()
+
+    def test_outcome_confidence_is_low_without_mature_samples(self):
+        with TemporaryDirectory() as directory:
+            store = RetentionTaskStore(Path(directory) / "tasks.sqlite3")
+            self.assertEqual("LOW", store.outcome_confidence()["confidence"])
+            self.assertEqual(30, store.outcome_confidence()["minimum_for_medium"])
+            store.close()

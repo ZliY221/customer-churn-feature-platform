@@ -393,6 +393,10 @@ def create_app(
         except KeyError as error:
             raise HTTPException(status_code=404, detail="retention task not found") from error
 
+    @app.get("/v3/retention/outcomes/confidence")
+    def retention_outcome_confidence(request: Request) -> dict[str, Any]:
+        return request.app.state.task_store.outcome_confidence()
+
     @app.get("/v3/retention/tasks/{task_id}/outcome")
     def retention_task_outcome(task_id: str, request: Request) -> dict[str, Any]:
         try:

@@ -591,6 +591,16 @@ class RetentionTaskStore:
                 "playbook": task["playbook"], "requires_review": True,
                 "reason": f"{task['risk_band']} risk uses {channel.lower()} follow-up"}
 
+    def outcome_confidence(self) -> dict[str, Any]:
+        """Grade how much mature outcome evidence is available for decisions."""
+        summary = self.outcome_summary()
+        mature = summary["observed_30d_count"]
+        level = "HIGH" if mature >= 100 else "MEDIUM" if mature >= 30 else "LOW"
+        return {"confidence": level, "observed_7d_count": summary["observed_7d_count"],
+                "observed_30d_count": mature, "minimum_for_medium": 30,
+                "minimum_for_high": 100,
+                "decision_note": "Use mature 30-day outcomes before changing strategy"}
+
     @staticmethod
     def _serialize_outcome(row: sqlite3.Row) -> dict[str, Any]:
         item = dict(row)
