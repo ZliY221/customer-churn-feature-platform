@@ -405,6 +405,16 @@ def create_app(
         items = request.app.state.task_store.owner_capacity(target_per_owner=target_per_owner)
         return {"owner_count": len(items), "target_per_owner": target_per_owner, "items": items}
 
+    @app.get("/v3/retention/tasks/{task_id}/contact-window")
+    def retention_contact_window(
+        task_id: str, request: Request,
+        local_hour: Annotated[int, Query(ge=0, le=23)],
+    ) -> dict[str, Any]:
+        try:
+            return request.app.state.task_store.contact_window(task_id, local_hour=local_hour)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="retention task not found") from error
+
     @app.get("/v3/retention/tasks/{task_id}/outcome")
     def retention_task_outcome(task_id: str, request: Request) -> dict[str, Any]:
         try:

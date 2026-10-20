@@ -87,3 +87,12 @@ class RetentionInsightTests(unittest.TestCase):
             self.assertEqual("OVERLOADED", item["capacity_status"])
             self.assertEqual(-1, item["remaining_capacity"])
             store.close()
+
+    def test_contact_window_blocks_late_contact(self):
+        with TemporaryDirectory() as directory:
+            store = RetentionTaskStore(Path(directory) / "tasks.sqlite3")
+            task = store.create(prediction_id="p1", customer_key="c1", model_sha256="a" * 64, risk_band="HIGH", owner="team", playbook="call")
+            result = store.contact_window(task["task_id"], local_hour=22)
+            self.assertFalse(result["contact_allowed"])
+            self.assertEqual(9, result["recommended_start_hour"])
+            store.close()

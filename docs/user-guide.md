@@ -118,4 +118,6 @@ SLA 概览按配置的响应小时数区分正常、4 小时内临期和已超�
 
 `GET /v3/retention/capacity?target_per_owner=20` 将各负责人活动任务数与容量目标比较，返回剩余容量及 `AVAILABLE`、`NEAR_LIMIT`、`OVERLOADED` 状态。分派前先查看该接口，优先选择仍有余量的负责人。
 
+`GET /v3/retention/tasks/{task_id}/contact-window?local_hour=10` 检查是否位于 09:00 至 20:00 的保守联系窗口。窗口外不会自动联系客户，接口返回建议开始小时供执行人员安排。
+
 仓库样例全部为匿名合成数据。特征按 `as_of_time` 构建，未来事件只用于生成延迟标签，不进入当期特征。模型文件、预测批次和任务库均保留可追溯标识。

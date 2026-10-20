@@ -614,6 +614,17 @@ class RetentionTaskStore:
                           "capacity_status": "OVERLOADED" if remaining < 0 else "NEAR_LIMIT" if remaining <= 3 else "AVAILABLE"})
         return sorted(items, key=lambda item: (item["remaining_capacity"], item["owner"]))
 
+    def contact_window(self, task_id: str, *, local_hour: int) -> dict[str, Any]:
+        """Check whether a task is inside a conservative customer contact window."""
+        if local_hour < 0 or local_hour > 23:
+            raise ValueError("local_hour must be between 0 and 23")
+        task = self.get(task_id)
+        allowed = 9 <= local_hour < 20
+        next_hour = local_hour if allowed else 9
+        return {"task_id": task_id, "risk_band": task["risk_band"], "local_hour": local_hour,
+                "contact_allowed": allowed, "recommended_start_hour": next_hour,
+                "reason": "within contact window" if allowed else "outside 09:00-20:00 contact window"}
+
     @staticmethod
     def _serialize_outcome(row: sqlite3.Row) -> dict[str, Any]:
         item = dict(row)
