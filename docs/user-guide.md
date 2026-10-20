@@ -122,4 +122,6 @@ SLA 概览按配置的响应小时数区分正常、4 小时内临期和已超�
 
 `GET /v3/retention/queue-forecast?handling_rate_per_hour=5&horizon_hours=8` 根据活动任务数和班次处理速度预测剩余任务。状态为 `CAPACITY_GAP` 时应调整人员或缩小本次领取范围。
 
+`GET /v3/retention/strategy-guardrails?minimum_observations=30` 检查各策略的 30 天成熟样本是否达到决策阈值。`COLLECT_MORE_DATA` 策略仅展示现状，不应用于替换当前方案。
+
 仓库样例全部为匿名合成数据。特征按 `as_of_time` 构建，未来事件只用于生成延迟标签，不进入当期特征。模型文件、预测批次和任务库均保留可追溯标识。

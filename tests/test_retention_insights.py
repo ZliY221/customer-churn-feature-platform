@@ -106,3 +106,12 @@ class RetentionInsightTests(unittest.TestCase):
             self.assertEqual("CAPACITY_GAP", result["status"])
             self.assertEqual(1, result["forecast_remaining"])
             store.close()
+
+    def test_strategy_guardrail_blocks_immature_result(self):
+        with TemporaryDirectory() as directory:
+            store = RetentionTaskStore(Path(directory) / "tasks.sqlite3")
+            store.create(prediction_id="p1", customer_key="c1", model_sha256="a" * 64, risk_band="HIGH", owner="team", playbook="call")
+            item = store.strategy_guardrails(minimum_observations=1)[0]
+            self.assertFalse(item["decision_ready"])
+            self.assertEqual("COLLECT_MORE_DATA", item["decision_status"])
+            store.close()

@@ -423,6 +423,14 @@ def create_app(
     ) -> dict[str, Any]:
         return request.app.state.task_store.queue_forecast(handling_rate_per_hour=handling_rate_per_hour, horizon_hours=horizon_hours)
 
+    @app.get("/v3/retention/strategy-guardrails")
+    def retention_strategy_guardrails(
+        request: Request,
+        minimum_observations: Annotated[int, Query(ge=1, le=10000)] = 30,
+    ) -> dict[str, Any]:
+        items = request.app.state.task_store.strategy_guardrails(minimum_observations=minimum_observations)
+        return {"strategy_count": len(items), "items": items}
+
     @app.get("/v3/retention/tasks/{task_id}/outcome")
     def retention_task_outcome(task_id: str, request: Request) -> dict[str, Any]:
         try:

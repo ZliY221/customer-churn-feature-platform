@@ -637,6 +637,18 @@ class RetentionTaskStore:
                 "forecast_remaining": remaining,
                 "status": "CAPACITY_GAP" if remaining else "ON_TRACK"}
 
+    def strategy_guardrails(self, *, minimum_observations: int = 30) -> list[dict[str, Any]]:
+        """Mark strategies that have enough mature evidence for comparison."""
+        if minimum_observations < 1:
+            raise ValueError("minimum_observations must be positive")
+        items = []
+        for row in self.strategy_effectiveness():
+            mature = int(row["observed_30d_count"])
+            items.append({**row, "minimum_observations": minimum_observations,
+                          "decision_ready": mature >= minimum_observations,
+                          "decision_status": "READY" if mature >= minimum_observations else "COLLECT_MORE_DATA"})
+        return items
+
     @staticmethod
     def _serialize_outcome(row: sqlite3.Row) -> dict[str, Any]:
         item = dict(row)
