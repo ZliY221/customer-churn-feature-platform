@@ -431,6 +431,14 @@ def create_app(
         items = request.app.state.task_store.strategy_guardrails(minimum_observations=minimum_observations)
         return {"strategy_count": len(items), "items": items}
 
+    @app.get("/v3/retention/daily-briefing")
+    def retention_daily_briefing(
+        request: Request,
+        handling_rate_per_hour: Annotated[int, Query(ge=1, le=500)] = 5,
+        horizon_hours: Annotated[int, Query(ge=1, le=168)] = 8,
+    ) -> dict[str, Any]:
+        return request.app.state.task_store.daily_briefing(handling_rate_per_hour=handling_rate_per_hour, horizon_hours=horizon_hours)
+
     @app.get("/v3/retention/tasks/{task_id}/outcome")
     def retention_task_outcome(task_id: str, request: Request) -> dict[str, Any]:
         try:

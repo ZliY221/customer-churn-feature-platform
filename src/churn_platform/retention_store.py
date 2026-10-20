@@ -649,6 +649,22 @@ class RetentionTaskStore:
                           "decision_status": "READY" if mature >= minimum_observations else "COLLECT_MORE_DATA"})
         return items
 
+    def daily_briefing(self, *, handling_rate_per_hour: int = 5, horizon_hours: int = 8) -> dict[str, Any]:
+        """Combine queue, SLA and capacity signals for a shift handoff."""
+        forecast = self.queue_forecast(handling_rate_per_hour=handling_rate_per_hour, horizon_hours=horizon_hours)
+        sla = self.task_sla_summary()
+        workloads = self.owner_workloads()
+        actions = []
+        if sla["overdue_count"]:
+            actions.append("Prioritize overdue retention tasks")
+        if forecast["status"] == "CAPACITY_GAP":
+            actions.append("Rebalance owners or reduce queue intake")
+        if not actions:
+            actions.append("Continue with the current priority queue")
+        return {"forecast": forecast, "sla": sla, "owner_count": len(workloads),
+                "actions": actions,
+                "status": "ACTION_REQUIRED" if sla["overdue_count"] or forecast["status"] == "CAPACITY_GAP" else "ON_TRACK"}
+
     @staticmethod
     def _serialize_outcome(row: sqlite3.Row) -> dict[str, Any]:
         item = dict(row)

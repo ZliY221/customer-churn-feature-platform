@@ -124,4 +124,6 @@ SLA 概览按配置的响应小时数区分正常、4 小时内临期和已超�
 
 `GET /v3/retention/strategy-guardrails?minimum_observations=30` 检查各策略的 30 天成熟样本是否达到决策阈值。`COLLECT_MORE_DATA` 策略仅展示现状，不应用于替换当前方案。
 
+`GET /v3/retention/daily-briefing` 汇总任务 SLA、班次容量预测、负责人数量和处理建议。每日开班或交接时先查看该接口，再进入优先队列处理具体任务。
+
 仓库样例全部为匿名合成数据。特征按 `as_of_time` 构建，未来事件只用于生成延迟标签，不进入当期特征。模型文件、预测批次和任务库均保留可追溯标识。

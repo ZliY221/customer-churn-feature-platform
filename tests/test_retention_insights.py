@@ -115,3 +115,13 @@ class RetentionInsightTests(unittest.TestCase):
             self.assertFalse(item["decision_ready"])
             self.assertEqual("COLLECT_MORE_DATA", item["decision_status"])
             store.close()
+
+    def test_daily_briefing_exposes_capacity_action(self):
+        with TemporaryDirectory() as directory:
+            store = RetentionTaskStore(Path(directory) / "tasks.sqlite3")
+            for index in range(2):
+                store.create(prediction_id=f"p{index}", customer_key=f"c{index}", model_sha256="a" * 64, risk_band="HIGH", owner="team", playbook="call")
+            result = store.daily_briefing(handling_rate_per_hour=1, horizon_hours=1)
+            self.assertEqual("ACTION_REQUIRED", result["status"])
+            self.assertTrue(any("Rebalance" in action for action in result["actions"]))
+            store.close()
