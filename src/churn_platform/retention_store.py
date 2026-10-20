@@ -580,6 +580,17 @@ class RetentionTaskStore:
         return [{**dict(row), "priority_reason": f"{row['risk_band']} risk / {row['status']} task"}
                 for row in rows]
 
+    def next_action(self, task_id: str) -> dict[str, Any]:
+        """Recommend a bounded, human-reviewable action for one task."""
+        task = self.get(task_id)
+        channels = {"CRITICAL": "PHONE", "HIGH": "PHONE", "WATCH": "IN_APP"}
+        windows = {"CRITICAL": 1, "HIGH": 4, "WATCH": 24}
+        channel = channels.get(task["risk_band"], "EMAIL")
+        return {"task_id": task_id, "recommended_channel": channel,
+                "contact_within_hours": windows.get(task["risk_band"], 48),
+                "playbook": task["playbook"], "requires_review": True,
+                "reason": f"{task['risk_band']} risk uses {channel.lower()} follow-up"}
+
     @staticmethod
     def _serialize_outcome(row: sqlite3.Row) -> dict[str, Any]:
         item = dict(row)

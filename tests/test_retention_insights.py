@@ -61,3 +61,12 @@ class RetentionInsightTests(unittest.TestCase):
             store.create(prediction_id="p2", customer_key="c2", model_sha256="a" * 64, risk_band="CRITICAL", owner="team", playbook="call")
             self.assertEqual("CRITICAL", store.priority_queue()[0]["risk_band"])
             store.close()
+
+    def test_next_action_keeps_human_review(self):
+        with TemporaryDirectory() as directory:
+            store = RetentionTaskStore(Path(directory) / "tasks.sqlite3")
+            task = store.create(prediction_id="p1", customer_key="c1", model_sha256="a" * 64, risk_band="CRITICAL", owner="team", playbook="priority-call")
+            action = store.next_action(task["task_id"])
+            self.assertEqual("PHONE", action["recommended_channel"])
+            self.assertTrue(action["requires_review"])
+            store.close()
