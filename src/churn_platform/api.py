@@ -20,6 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from .inference import canonical_sha256, load_model
 from .feature_registry import FeatureRegistry
 from .experiment_plan import plan_retention_experiment
+from .campaign_orchestration import CampaignCandidate, orchestrate_campaign
 from .operations import DEFAULT_PLAYBOOKS, RiskBand, RiskPolicy, portfolio_summary, priority_customers
 from .retention_store import RetentionTaskStore
 
@@ -55,6 +56,22 @@ class RetentionTaskCreate(BaseModel):
     prediction_id: str = Field(min_length=1, max_length=128)
     owner: str = Field(min_length=1, max_length=80)
     playbook: str | None = Field(default=None, min_length=1, max_length=120)
+
+
+class CampaignCandidateInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    customer_key: str = Field(min_length=1, max_length=128)
+    risk_score: float = Field(ge=0, le=1)
+    contact_allowed: bool
+    owner_available: bool = True
+
+
+class CampaignOrchestrationInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    campaign_id: str = Field(min_length=1, max_length=120)
+    candidates: list[CampaignCandidateInput] = Field(min_length=1, max_length=5000)
+    holdout_ratio: float = Field(default=0.2, gt=0, lt=0.5)
+    treatment_capacity: int = Field(default=500, ge=1, le=5000)
 
 
 class RetentionTaskStatusUpdate(BaseModel):
@@ -457,6 +474,15 @@ def create_app(
             )
         except KeyError as error:
             raise HTTPException(status_code=404, detail="retention task not found") from error
+
+    @app.post("/v4/retention/campaigns/orchestrate")
+    def retention_campaign_orchestration(payload: CampaignOrchestrationInput) -> dict[str, Any]:
+        return orchestrate_campaign(
+            payload.campaign_id,
+            [CampaignCandidate(**item.model_dump()) for item in payload.candidates],
+            holdout_ratio=payload.holdout_ratio,
+            treatment_capacity=payload.treatment_capacity,
+        )
 
     @app.get("/v3/retention/experiment-plan")
     def retention_experiment_plan(

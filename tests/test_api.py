@@ -384,6 +384,22 @@ class PredictionApiTests(unittest.TestCase):
         self.assertEqual("CAPACITY_GAP", response.json()["status"])
         self.assertEqual(400, response.json()["holdout_count"])
 
+    def test_v4_campaign_orchestration_returns_customer_stages(self) -> None:
+        with TestClient(create_app(self.model, self.predictions)) as client:
+            response = client.post("/v4/retention/campaigns/orchestrate", json={
+                "campaign_id": "oct-retention", "holdout_ratio": 0.2,
+                "treatment_capacity": 2,
+                "candidates": [
+                    {"customer_key": f"c-{index}", "risk_score": 1 - index / 10,
+                     "contact_allowed": index != 5, "owner_available": True}
+                    for index in range(6)
+                ],
+            })
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("PARTIAL", response.json()["status"])
+        self.assertEqual(1, response.json()["counts"]["HOLDOUT"])
+        self.assertFalse(response.json()["automatic_contact_started"])
+
 
 if __name__ == "__main__":
     unittest.main()
