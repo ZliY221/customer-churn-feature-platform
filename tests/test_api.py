@@ -339,5 +339,24 @@ class PredictionApiTests(unittest.TestCase):
             self.assertEqual(3, events.json()["count"])
 
 
+    def test_contact_policy_is_available_through_the_operations_api(self) -> None:
+        with TemporaryDirectory() as directory:
+            database = Path(directory) / "tasks.sqlite3"
+            with TestClient(create_app(self.model, self.predictions, task_database_path=database)) as client:
+                prediction = client.get("/v1/portfolio/priority", params={"limit": 1}).json()["items"][0]
+                task = client.post("/v1/retention/tasks", json={
+                    "prediction_id": prediction["prediction_id"], "owner": "retention-team"
+                }).json()
+                response = client.get(
+                    f"/v3/retention/tasks/{task['task_id']}/contact-policy",
+                    params=[("consent_status", "GRANTED"), ("contacts_7d", "1"),
+                            ("requested_channel", "IN_APP"),
+                            ("preferred_channels", "IN_APP")],
+                )
+            self.assertEqual(200, response.status_code)
+            self.assertTrue(response.json()["contact_allowed"])
+            self.assertEqual("ALLOWED", response.json()["policy_status"])
+
+
 if __name__ == "__main__":
     unittest.main()

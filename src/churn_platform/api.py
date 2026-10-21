@@ -9,6 +9,7 @@ import json
 import math
 import os
 from pathlib import Path
+import tomllib
 from typing import Annotated, Any, Literal
 
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -23,6 +24,8 @@ from .retention_store import RetentionTaskStore
 
 
 STATIC_DIRECTORY = Path(__file__).resolve().parent / "static"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_VERSION = str(tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"])
 
 
 class Prediction(BaseModel):
@@ -213,7 +216,7 @@ def create_app(
 
     app = FastAPI(
         title="Customer Retention Operations Platform",
-        version="3.0.0",
+        version=PROJECT_VERSION,
         lifespan=lifespan,
     )
 
@@ -412,6 +415,25 @@ def create_app(
     ) -> dict[str, Any]:
         try:
             return request.app.state.task_store.contact_window(task_id, local_hour=local_hour)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="retention task not found") from error
+
+    @app.get("/v3/retention/tasks/{task_id}/contact-policy")
+    def retention_contact_policy(
+        task_id: str, request: Request,
+        consent_status: Literal["GRANTED", "UNKNOWN", "WITHDRAWN"],
+        contacts_7d: Annotated[int, Query(ge=0, le=100)],
+        requested_channel: Literal["PHONE", "SMS", "EMAIL", "IN_APP"],
+        maximum_contacts_7d: Annotated[int, Query(ge=1, le=100)] = 3,
+        preferred_channels: Annotated[list[Literal["PHONE", "SMS", "EMAIL", "IN_APP"]] | None, Query()] = None,
+    ) -> dict[str, Any]:
+        try:
+            return request.app.state.task_store.contact_policy(
+                task_id, consent_status=consent_status, contacts_7d=contacts_7d,
+                maximum_contacts_7d=maximum_contacts_7d,
+                requested_channel=requested_channel,
+                preferred_channels=list(preferred_channels or []),
+            )
         except KeyError as error:
             raise HTTPException(status_code=404, detail="retention task not found") from error
 

@@ -97,6 +97,21 @@ class RetentionInsightTests(unittest.TestCase):
             self.assertEqual(9, result["recommended_start_hour"])
             store.close()
 
+    def test_contact_policy_respects_consent_frequency_and_channel(self):
+        with TemporaryDirectory() as directory:
+            store = RetentionTaskStore(Path(directory) / "tasks.sqlite3")
+            task = store.create(prediction_id="p1", customer_key="c1", model_sha256="a" * 64, risk_band="HIGH", owner="team", playbook="call")
+            result = store.contact_policy(
+                task["task_id"], consent_status="GRANTED", contacts_7d=3,
+                maximum_contacts_7d=3, requested_channel="PHONE",
+                preferred_channels=["IN_APP"],
+            )
+            self.assertFalse(result["contact_allowed"])
+            self.assertEqual("BLOCKED", result["policy_status"])
+            self.assertEqual(2, len(result["blockers"]))
+            self.assertEqual(["IN_APP"], result["alternative_channels"])
+            store.close()
+
     def test_queue_forecast_reports_capacity_gap(self):
         with TemporaryDirectory() as directory:
             store = RetentionTaskStore(Path(directory) / "tasks.sqlite3")

@@ -9,11 +9,12 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import tomllib
 from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "2.3.0"
+VERSION = str(tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"])
 
 
 def _output_path(value: Path) -> Path:

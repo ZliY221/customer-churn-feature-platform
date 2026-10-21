@@ -625,6 +625,39 @@ class RetentionTaskStore:
                 "contact_allowed": allowed, "recommended_start_hour": next_hour,
                 "reason": "within contact window" if allowed else "outside 09:00-20:00 contact window"}
 
+    def contact_policy(self, task_id: str, *, consent_status: str, contacts_7d: int,
+                       maximum_contacts_7d: int, requested_channel: str,
+                       preferred_channels: list[str]) -> dict[str, Any]:
+        """Apply consent, frequency and channel preference before customer contact."""
+        task = self.get(task_id)
+        consent = consent_status.strip().upper()
+        channel = requested_channel.strip().upper()
+        preferences = sorted({item.strip().upper() for item in preferred_channels if item.strip()})
+        supported = {"PHONE", "SMS", "EMAIL", "IN_APP"}
+        if consent not in {"GRANTED", "UNKNOWN", "WITHDRAWN"}:
+            raise ValueError("consent_status is invalid")
+        if contacts_7d < 0 or maximum_contacts_7d < 1:
+            raise ValueError("contact frequency values are invalid")
+        if channel not in supported or any(item not in supported for item in preferences):
+            raise ValueError("contact channel is invalid")
+        blockers: list[str] = []
+        if consent == "WITHDRAWN":
+            blockers.append("customer has withdrawn contact consent")
+        elif consent == "UNKNOWN":
+            blockers.append("contact consent must be confirmed")
+        if contacts_7d >= maximum_contacts_7d:
+            blockers.append("seven-day contact frequency limit reached")
+        if preferences and channel not in preferences:
+            blockers.append("requested channel is outside customer preferences")
+        alternatives = [item for item in preferences if item != channel]
+        return {"task_id": task_id, "risk_band": task["risk_band"],
+                "consent_status": consent, "contacts_7d": contacts_7d,
+                "maximum_contacts_7d": maximum_contacts_7d,
+                "requested_channel": channel, "preferred_channels": preferences,
+                "alternative_channels": alternatives, "blockers": blockers,
+                "contact_allowed": not blockers,
+                "policy_status": "ALLOWED" if not blockers else "BLOCKED"}
+
     def queue_forecast(self, *, handling_rate_per_hour: int, horizon_hours: int = 8) -> dict[str, Any]:
         """Forecast whether active tasks fit inside the available handling horizon."""
         if handling_rate_per_hour < 1 or horizon_hours < 1 or horizon_hours > 168:
