@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .inference import canonical_sha256, load_model
 from .feature_registry import FeatureRegistry
+from .experiment_plan import plan_retention_experiment
 from .operations import DEFAULT_PLAYBOOKS, RiskBand, RiskPolicy, portfolio_summary, priority_customers
 from .retention_store import RetentionTaskStore
 
@@ -456,6 +457,21 @@ def create_app(
             )
         except KeyError as error:
             raise HTTPException(status_code=404, detail="retention task not found") from error
+
+    @app.get("/v3/retention/experiment-plan")
+    def retention_experiment_plan(
+        eligible_customers: Annotated[int, Query(ge=1)],
+        holdout_ratio: Annotated[float, Query(gt=0, lt=0.5)] = 0.2,
+        minimum_holdout: Annotated[int, Query(ge=1)] = 100,
+        daily_treatment_capacity: Annotated[int, Query(ge=1)] = 500,
+        campaign_days: Annotated[int, Query(ge=1, le=90)] = 5,
+    ) -> dict[str, Any]:
+        return plan_retention_experiment(
+            eligible_customers=eligible_customers, holdout_ratio=holdout_ratio,
+            minimum_holdout=minimum_holdout,
+            daily_treatment_capacity=daily_treatment_capacity,
+            campaign_days=campaign_days,
+        )
 
     @app.get("/v3/retention/queue-forecast")
     def retention_queue_forecast(

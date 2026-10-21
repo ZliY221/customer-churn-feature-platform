@@ -374,6 +374,16 @@ class PredictionApiTests(unittest.TestCase):
             self.assertEqual("APPROVED", response.json()["status"])
             self.assertEqual(4.0, response.json()["expected_roi"])
 
+    def test_experiment_plan_is_available_through_the_operations_api(self) -> None:
+        with TestClient(create_app(self.model, self.predictions)) as client:
+            response = client.get("/v3/retention/experiment-plan", params={
+                "eligible_customers": 2000, "holdout_ratio": 0.2,
+                "daily_treatment_capacity": 200, "campaign_days": 5,
+            })
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("CAPACITY_GAP", response.json()["status"])
+        self.assertEqual(400, response.json()["holdout_count"])
+
 
 if __name__ == "__main__":
     unittest.main()
