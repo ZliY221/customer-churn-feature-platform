@@ -357,6 +357,23 @@ class PredictionApiTests(unittest.TestCase):
             self.assertTrue(response.json()["contact_allowed"])
             self.assertEqual("ALLOWED", response.json()["policy_status"])
 
+    def test_offer_budget_is_available_through_the_operations_api(self) -> None:
+        with TemporaryDirectory() as directory:
+            database = Path(directory) / "tasks.sqlite3"
+            with TestClient(create_app(self.model, self.predictions, task_database_path=database)) as client:
+                prediction = client.get("/v1/portfolio/priority", params={"limit": 1}).json()["items"][0]
+                task = client.post("/v1/retention/tasks", json={
+                    "prediction_id": prediction["prediction_id"], "owner": "retention-team"
+                }).json()
+                response = client.get(
+                    f"/v3/retention/tasks/{task['task_id']}/offer-budget",
+                    params={"customer_value": 1000, "expected_retention_uplift": 0.2,
+                            "offer_cost": 50, "remaining_campaign_budget": 1000},
+                )
+            self.assertEqual(200, response.status_code)
+            self.assertEqual("APPROVED", response.json()["status"])
+            self.assertEqual(4.0, response.json()["expected_roi"])
+
 
 if __name__ == "__main__":
     unittest.main()

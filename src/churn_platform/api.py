@@ -437,6 +437,26 @@ def create_app(
         except KeyError as error:
             raise HTTPException(status_code=404, detail="retention task not found") from error
 
+    @app.get("/v3/retention/tasks/{task_id}/offer-budget")
+    def retention_offer_budget(
+        task_id: str, request: Request,
+        customer_value: Annotated[float, Query(ge=0)],
+        expected_retention_uplift: Annotated[float, Query(ge=0, le=1)],
+        offer_cost: Annotated[float, Query(gt=0)],
+        remaining_campaign_budget: Annotated[float, Query(ge=0)],
+        minimum_roi: Annotated[float, Query(gt=0, le=100)] = 1.2,
+    ) -> dict[str, Any]:
+        try:
+            return request.app.state.task_store.offer_budget(
+                task_id, customer_value=customer_value,
+                expected_retention_uplift=expected_retention_uplift,
+                offer_cost=offer_cost,
+                remaining_campaign_budget=remaining_campaign_budget,
+                minimum_roi=minimum_roi,
+            )
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="retention task not found") from error
+
     @app.get("/v3/retention/queue-forecast")
     def retention_queue_forecast(
         request: Request,

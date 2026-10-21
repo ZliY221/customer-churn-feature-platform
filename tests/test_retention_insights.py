@@ -112,6 +112,20 @@ class RetentionInsightTests(unittest.TestCase):
             self.assertEqual(["IN_APP"], result["alternative_channels"])
             store.close()
 
+    def test_offer_budget_blocks_low_return_offer(self):
+        with TemporaryDirectory() as directory:
+            store = RetentionTaskStore(Path(directory) / "tasks.sqlite3")
+            task = store.create(prediction_id="p1", customer_key="c1", model_sha256="a" * 64, risk_band="HIGH", owner="team", playbook="offer")
+            result = store.offer_budget(
+                task["task_id"], customer_value=500,
+                expected_retention_uplift=0.10, offer_cost=80,
+                remaining_campaign_budget=1000, minimum_roi=1.2,
+            )
+            self.assertEqual("BLOCKED", result["status"])
+            self.assertTrue(result["requires_review"])
+            self.assertEqual(41.67, result["maximum_recommended_offer"])
+            store.close()
+
     def test_queue_forecast_reports_capacity_gap(self):
         with TemporaryDirectory() as directory:
             store = RetentionTaskStore(Path(directory) / "tasks.sqlite3")

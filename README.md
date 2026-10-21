@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/ci.yml)
 [![Portable smoke](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/portable-smoke.yml/badge.svg)](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/portable-smoke.yml)
-![Version](https://img.shields.io/badge/version-v3.13.0-5b3f78)
+![Version](https://img.shields.io/badge/version-v3.14.0-5b3f78)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776ab)
 ![API](https://img.shields.io/badge/API-FastAPI-05998b)
 
@@ -147,4 +147,4 @@ docs/                    架构、模型和操作文档
 
 ## 版本与维护
 
-当前版本为 `v3.13.0`。客户挽留平台新增联络授权与频控护栏，结合授权状态、七日联系次数和渠道偏好给出可解释的触达结论。每次发布同步维护[用户使用指南](docs/user-guide.md)、[版本记录](CHANGELOG.md)和[版本摘要](VERSION_LOG.md)。
+当前版本为 `v3.14.0`。客户挽留平台新增方案投入回报评估，根据客户价值、预期提升、方案成本和活动预算给出最大建议投入。每次发布同步维护[用户使用指南](docs/user-guide.md)、[版本记录](CHANGELOG.md)和[版本摘要](VERSION_LOG.md)。

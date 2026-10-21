@@ -658,6 +658,36 @@ class RetentionTaskStore:
                 "contact_allowed": not blockers,
                 "policy_status": "ALLOWED" if not blockers else "BLOCKED"}
 
+    def offer_budget(self, task_id: str, *, customer_value: float,
+                     expected_retention_uplift: float, offer_cost: float,
+                     remaining_campaign_budget: float,
+                     minimum_roi: float = 1.2) -> dict[str, Any]:
+        """Evaluate a proposed retention offer against value, uplift and budget."""
+        task = self.get(task_id)
+        if customer_value < 0 or offer_cost <= 0 or remaining_campaign_budget < 0:
+            raise ValueError("offer values are invalid")
+        if not 0 <= expected_retention_uplift <= 1 or minimum_roi <= 0:
+            raise ValueError("uplift or minimum ROI is invalid")
+        expected_value = customer_value * expected_retention_uplift
+        roi = expected_value / offer_cost
+        maximum_offer = min(remaining_campaign_budget, expected_value / minimum_roi)
+        blockers: list[str] = []
+        if offer_cost > remaining_campaign_budget:
+            blockers.append("offer exceeds remaining campaign budget")
+        if roi < minimum_roi:
+            blockers.append("expected offer ROI is below the configured floor")
+        status = "BLOCKED" if blockers else "REVIEW" if offer_cost > remaining_campaign_budget * 0.25 else "APPROVED"
+        return {"task_id": task_id, "risk_band": task["risk_band"],
+                "customer_value": round(customer_value, 2),
+                "expected_retention_uplift": expected_retention_uplift,
+                "expected_incremental_value": round(expected_value, 2),
+                "offer_cost": round(offer_cost, 2),
+                "remaining_campaign_budget": round(remaining_campaign_budget, 2),
+                "expected_roi": round(roi, 4), "minimum_roi": minimum_roi,
+                "maximum_recommended_offer": round(maximum_offer, 2),
+                "status": status, "requires_review": status != "APPROVED",
+                "blockers": blockers}
+
     def queue_forecast(self, *, handling_rate_per_hour: int, horizon_hours: int = 8) -> dict[str, Any]:
         """Forecast whether active tasks fit inside the available handling horizon."""
         if handling_rate_per_hour < 1 or horizon_hours < 1 or horizon_hours > 168:
