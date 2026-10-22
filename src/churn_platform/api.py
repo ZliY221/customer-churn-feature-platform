@@ -22,6 +22,7 @@ from .feature_registry import FeatureRegistry
 from .experiment_plan import plan_retention_experiment
 from .campaign_orchestration import CampaignCandidate, orchestrate_campaign
 from .channel_routing import ChannelCandidate, ChannelCapacity, route_campaign_channels
+from .campaign_delivery_audit import DeliveryAssignment, audit_campaign_delivery
 from .operations import DEFAULT_PLAYBOOKS, RiskBand, RiskPolicy, portfolio_summary, priority_customers
 from .retention_store import RetentionTaskStore
 
@@ -96,6 +97,21 @@ class CampaignChannelRoutingInput(BaseModel):
     campaign_id: str = Field(min_length=1, max_length=120)
     candidates: list[ChannelCandidateInput] = Field(min_length=1, max_length=5000)
     channels: list[ChannelCapacityInput] = Field(min_length=1, max_length=4)
+
+
+class DeliveryAssignmentInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    customer_key: str = Field(min_length=1, max_length=128)
+    segment: str = Field(min_length=1, max_length=80)
+    stage: Literal["ROUTED", "DEFERRED_CHANNEL"]
+    channel: Literal["PHONE", "SMS", "EMAIL", "IN_APP"] | None = None
+
+
+class CampaignDeliveryAuditInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    campaign_id: str = Field(min_length=1, max_length=120)
+    assignments: list[DeliveryAssignmentInput] = Field(min_length=1, max_length=5000)
+    maximum_rate_gap: float = Field(default=0.2, ge=0, le=1)
 
 
 class RetentionTaskStatusUpdate(BaseModel):
@@ -520,6 +536,16 @@ def create_app(
                 preferred_channels=tuple(item.preferred_channels),
             ) for item in payload.candidates],
             [ChannelCapacity(**item.model_dump()) for item in payload.channels],
+        )
+
+    @app.post("/v4/retention/campaigns/delivery-audit")
+    def retention_campaign_delivery_audit(
+        payload: CampaignDeliveryAuditInput,
+    ) -> dict[str, Any]:
+        return audit_campaign_delivery(
+            payload.campaign_id,
+            [DeliveryAssignment(**item.model_dump()) for item in payload.assignments],
+            maximum_rate_gap=payload.maximum_rate_gap,
         )
 
     @app.get("/v3/retention/experiment-plan")

@@ -420,6 +420,23 @@ class PredictionApiTests(unittest.TestCase):
         self.assertEqual(1, response.json()["routed_count"])
         self.assertFalse(response.json()["automatic_contact_started"])
 
+    def test_v4_campaign_delivery_audit_is_exposed(self) -> None:
+        with TestClient(create_app(self.model, self.predictions)) as client:
+            response = client.post("/v4/retention/campaigns/delivery-audit", json={
+                "campaign_id": "oct-retention",
+                "maximum_rate_gap": 0.2,
+                "assignments": [
+                    {"customer_key": "c-1", "segment": "NEW",
+                     "stage": "ROUTED", "channel": "SMS"},
+                    {"customer_key": "c-2", "segment": "LOYAL",
+                     "stage": "DEFERRED_CHANNEL"},
+                ],
+            })
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("REVIEW", response.json()["status"])
+        self.assertEqual(1.0, response.json()["observed_rate_gap"])
+        self.assertFalse(response.json()["automatic_delivery_started"])
+
 
 if __name__ == "__main__":
     unittest.main()

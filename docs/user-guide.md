@@ -1,6 +1,6 @@
 # 用户使用指南
 
-适用版本：`v4.1.0`
+适用版本：`v4.2.0`
 
 本指南随项目版本同步更新，覆盖当前版本的数据链路、模型监控和留存运营流程。首次使用建议先阅读仓库首页的项目简介、业务流程和常用入口，再按本指南启动完整链路。
 
@@ -149,3 +149,7 @@ SLA 概览按配置的响应小时数区分正常、4 小时内临期和已超�
 ## v4.1.0 触达渠道路由
 
 先从活动编排结果中选取 `CONTACT_READY` 客户，再调用 `POST /v4/retention/campaigns/channel-routing`。请求需提交活动编号、每位客户的风险分数与偏好渠道，以及 PHONE、SMS、EMAIL、IN_APP 等渠道的本轮容量和预期响应率。系统先处理高风险客户，并在其偏好范围内选择仍有容量且预期响应率更高的渠道；没有可用偏好渠道时返回 `DEFERRED_CHANNEL`。`remaining_capacity` 可用于下一批次规划，`automatic_contact_started=false` 表示路由只供运营人员复核，不会直接发送消息。
+
+## v4.2.0 渠道分配公平性审计
+
+将渠道路由返回的客户标识、业务分群、路由阶段和渠道提交到 `POST /v4/retention/campaigns/delivery-audit`，并通过 `maximum_rate_gap` 设置允许的分群路由率差值。接口按分群汇总客户数、成功路由数、延期数、路由率和渠道构成；最大差值超过门槛时返回 `REVIEW`，否则返回 `BALANCED`。该指标用于发现活动执行覆盖差异，不代表对客户属性作价值判断；`automatic_delivery_started=false` 表示接口不会发起触达。
