@@ -21,6 +21,7 @@ from .inference import canonical_sha256, load_model
 from .feature_registry import FeatureRegistry
 from .experiment_plan import plan_retention_experiment
 from .campaign_orchestration import CampaignCandidate, orchestrate_campaign
+from .channel_routing import ChannelCandidate, ChannelCapacity, route_campaign_channels
 from .operations import DEFAULT_PLAYBOOKS, RiskBand, RiskPolicy, portfolio_summary, priority_customers
 from .retention_store import RetentionTaskStore
 
@@ -72,6 +73,29 @@ class CampaignOrchestrationInput(BaseModel):
     candidates: list[CampaignCandidateInput] = Field(min_length=1, max_length=5000)
     holdout_ratio: float = Field(default=0.2, gt=0, lt=0.5)
     treatment_capacity: int = Field(default=500, ge=1, le=5000)
+
+
+class ChannelCandidateInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    customer_key: str = Field(min_length=1, max_length=128)
+    risk_score: float = Field(ge=0, le=1)
+    preferred_channels: list[Literal["PHONE", "SMS", "EMAIL", "IN_APP"]] = Field(
+        min_length=1, max_length=4
+    )
+
+
+class ChannelCapacityInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    channel: Literal["PHONE", "SMS", "EMAIL", "IN_APP"]
+    capacity: int = Field(ge=0, le=5000)
+    expected_response_rate: float = Field(ge=0, le=1)
+
+
+class CampaignChannelRoutingInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    campaign_id: str = Field(min_length=1, max_length=120)
+    candidates: list[ChannelCandidateInput] = Field(min_length=1, max_length=5000)
+    channels: list[ChannelCapacityInput] = Field(min_length=1, max_length=4)
 
 
 class RetentionTaskStatusUpdate(BaseModel):
@@ -482,6 +506,20 @@ def create_app(
             [CampaignCandidate(**item.model_dump()) for item in payload.candidates],
             holdout_ratio=payload.holdout_ratio,
             treatment_capacity=payload.treatment_capacity,
+        )
+
+    @app.post("/v4/retention/campaigns/channel-routing")
+    def retention_campaign_channel_routing(
+        payload: CampaignChannelRoutingInput,
+    ) -> dict[str, Any]:
+        return route_campaign_channels(
+            payload.campaign_id,
+            [ChannelCandidate(
+                customer_key=item.customer_key,
+                risk_score=item.risk_score,
+                preferred_channels=tuple(item.preferred_channels),
+            ) for item in payload.candidates],
+            [ChannelCapacity(**item.model_dump()) for item in payload.channels],
         )
 
     @app.get("/v3/retention/experiment-plan")

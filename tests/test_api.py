@@ -400,6 +400,26 @@ class PredictionApiTests(unittest.TestCase):
         self.assertEqual(1, response.json()["counts"]["HOLDOUT"])
         self.assertFalse(response.json()["automatic_contact_started"])
 
+    def test_v4_campaign_channel_routing_is_exposed(self) -> None:
+        with TestClient(create_app(self.model, self.predictions)) as client:
+            response = client.post("/v4/retention/campaigns/channel-routing", json={
+                "campaign_id": "oct-retention",
+                "candidates": [
+                    {"customer_key": "c-1", "risk_score": 0.9,
+                     "preferred_channels": ["SMS", "EMAIL"]},
+                    {"customer_key": "c-2", "risk_score": 0.8,
+                     "preferred_channels": ["SMS"]},
+                ],
+                "channels": [
+                    {"channel": "SMS", "capacity": 1, "expected_response_rate": 0.6},
+                    {"channel": "EMAIL", "capacity": 1, "expected_response_rate": 0.4},
+                ],
+            })
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("PARTIAL", response.json()["status"])
+        self.assertEqual(1, response.json()["routed_count"])
+        self.assertFalse(response.json()["automatic_contact_started"])
+
 
 if __name__ == "__main__":
     unittest.main()
