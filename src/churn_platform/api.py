@@ -24,6 +24,7 @@ from .campaign_orchestration import CampaignCandidate, orchestrate_campaign
 from .channel_routing import ChannelCandidate, ChannelCapacity, route_campaign_channels
 from .campaign_delivery_audit import DeliveryAssignment, audit_campaign_delivery
 from .delivery_rebalance import SegmentDeliveryState, plan_delivery_rebalance
+from .campaign_conflicts import CampaignEnrollment, resolve_campaign_conflicts
 from .operations import DEFAULT_PLAYBOOKS, RiskBand, RiskPolicy, portfolio_summary, priority_customers
 from .retention_store import RetentionTaskStore
 
@@ -129,6 +130,20 @@ class CampaignDeliveryRebalanceInput(BaseModel):
     segments: list[SegmentDeliveryStateInput] = Field(min_length=1, max_length=100)
     reserve_capacity: int = Field(ge=0, le=5000)
     target_rate_gap: float = Field(default=0.1, ge=0, le=1)
+
+
+class CampaignEnrollmentInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    customer_key: str = Field(min_length=1, max_length=128)
+    campaign_id: str = Field(min_length=1, max_length=120)
+    priority: int = Field(ge=1, le=100)
+    scheduled_hour: int = Field(ge=0, le=100000)
+
+
+class CampaignConflictInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    enrollments: list[CampaignEnrollmentInput] = Field(min_length=1, max_length=5000)
+    cooldown_hours: int = Field(default=24, ge=1, le=168)
 
 
 class RetentionTaskStatusUpdate(BaseModel):
@@ -574,6 +589,13 @@ def create_app(
             [SegmentDeliveryState(**item.model_dump()) for item in payload.segments],
             reserve_capacity=payload.reserve_capacity,
             target_rate_gap=payload.target_rate_gap,
+        )
+
+    @app.post("/v4/retention/campaigns/conflict-check")
+    def retention_campaign_conflict_check(payload: CampaignConflictInput) -> dict[str, Any]:
+        return resolve_campaign_conflicts(
+            [CampaignEnrollment(**item.model_dump()) for item in payload.enrollments],
+            cooldown_hours=payload.cooldown_hours,
         )
 
     @app.get("/v3/retention/experiment-plan")

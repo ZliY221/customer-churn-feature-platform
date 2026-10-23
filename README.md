@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/ci.yml)
 [![Portable smoke](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/portable-smoke.yml/badge.svg)](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/portable-smoke.yml)
-![Version](https://img.shields.io/badge/version-v4.3.0-5b3f78)
+![Version](https://img.shields.io/badge/version-v4.4.0-5b3f78)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776ab)
 ![API](https://img.shields.io/badge/API-FastAPI-05998b)
 
@@ -147,4 +147,4 @@ docs/                    架构、模型和操作文档
 
 ## 版本与维护
 
-当前版本为 `v4.3.0`。客户挽留平台新增分群触达差异修复计划，在备用容量约束内为路由率偏低的分群计算补充分配数量，供运营人员复核执行。每次发布同步维护[用户使用指南](docs/user-guide.md)、[版本记录](CHANGELOG.md)和[版本摘要](VERSION_LOG.md)。
+当前版本为 `v4.4.0`。客户挽留平台新增跨活动触达冲突检查，在联系冷却窗口内保留高优先级活动并延期冲突安排，降低重复打扰风险。每次发布同步维护[用户使用指南](docs/user-guide.md)、[版本记录](CHANGELOG.md)和[版本摘要](VERSION_LOG.md)。

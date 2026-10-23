@@ -455,6 +455,22 @@ class PredictionApiTests(unittest.TestCase):
         self.assertEqual(6, response.json()["used_capacity"])
         self.assertFalse(response.json()["automatic_rerouting_started"])
 
+    def test_v4_campaign_conflict_check_is_exposed(self) -> None:
+        with TestClient(create_app(self.model, self.predictions)) as client:
+            response = client.post("/v4/retention/campaigns/conflict-check", json={
+                "cooldown_hours": 24,
+                "enrollments": [
+                    {"customer_key": "c-1", "campaign_id": "renewal",
+                     "priority": 90, "scheduled_hour": 100},
+                    {"customer_key": "c-1", "campaign_id": "survey",
+                     "priority": 30, "scheduled_hour": 105},
+                ],
+            })
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("CONFLICTS_RESOLVED", response.json()["status"])
+        self.assertEqual(1, response.json()["conflict_count"])
+        self.assertFalse(response.json()["automatic_contact_started"])
+
 
 if __name__ == "__main__":
     unittest.main()
