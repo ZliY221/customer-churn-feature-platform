@@ -23,6 +23,7 @@ from .experiment_plan import plan_retention_experiment
 from .campaign_orchestration import CampaignCandidate, orchestrate_campaign
 from .channel_routing import ChannelCandidate, ChannelCapacity, route_campaign_channels
 from .campaign_delivery_audit import DeliveryAssignment, audit_campaign_delivery
+from .delivery_rebalance import SegmentDeliveryState, plan_delivery_rebalance
 from .operations import DEFAULT_PLAYBOOKS, RiskBand, RiskPolicy, portfolio_summary, priority_customers
 from .retention_store import RetentionTaskStore
 
@@ -112,6 +113,22 @@ class CampaignDeliveryAuditInput(BaseModel):
     campaign_id: str = Field(min_length=1, max_length=120)
     assignments: list[DeliveryAssignmentInput] = Field(min_length=1, max_length=5000)
     maximum_rate_gap: float = Field(default=0.2, ge=0, le=1)
+
+
+class SegmentDeliveryStateInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    segment: str = Field(min_length=1, max_length=80)
+    customer_count: int = Field(ge=1, le=5000)
+    routed_count: int = Field(ge=0, le=5000)
+    reserve_candidates: int = Field(ge=0, le=5000)
+
+
+class CampaignDeliveryRebalanceInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    campaign_id: str = Field(min_length=1, max_length=120)
+    segments: list[SegmentDeliveryStateInput] = Field(min_length=1, max_length=100)
+    reserve_capacity: int = Field(ge=0, le=5000)
+    target_rate_gap: float = Field(default=0.1, ge=0, le=1)
 
 
 class RetentionTaskStatusUpdate(BaseModel):
@@ -546,6 +563,17 @@ def create_app(
             payload.campaign_id,
             [DeliveryAssignment(**item.model_dump()) for item in payload.assignments],
             maximum_rate_gap=payload.maximum_rate_gap,
+        )
+
+    @app.post("/v4/retention/campaigns/delivery-rebalance")
+    def retention_campaign_delivery_rebalance(
+        payload: CampaignDeliveryRebalanceInput,
+    ) -> dict[str, Any]:
+        return plan_delivery_rebalance(
+            payload.campaign_id,
+            [SegmentDeliveryState(**item.model_dump()) for item in payload.segments],
+            reserve_capacity=payload.reserve_capacity,
+            target_rate_gap=payload.target_rate_gap,
         )
 
     @app.get("/v3/retention/experiment-plan")

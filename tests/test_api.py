@@ -437,6 +437,24 @@ class PredictionApiTests(unittest.TestCase):
         self.assertEqual(1.0, response.json()["observed_rate_gap"])
         self.assertFalse(response.json()["automatic_delivery_started"])
 
+    def test_v4_campaign_delivery_rebalance_is_exposed(self) -> None:
+        with TestClient(create_app(self.model, self.predictions)) as client:
+            response = client.post("/v4/retention/campaigns/delivery-rebalance", json={
+                "campaign_id": "oct-retention",
+                "reserve_capacity": 10,
+                "target_rate_gap": 0.1,
+                "segments": [
+                    {"segment": "NEW", "customer_count": 20,
+                     "routed_count": 16, "reserve_candidates": 4},
+                    {"segment": "LOYAL", "customer_count": 20,
+                     "routed_count": 8, "reserve_candidates": 10},
+                ],
+            })
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("READY", response.json()["status"])
+        self.assertEqual(6, response.json()["used_capacity"])
+        self.assertFalse(response.json()["automatic_rerouting_started"])
+
 
 if __name__ == "__main__":
     unittest.main()
