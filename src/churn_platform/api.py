@@ -27,6 +27,7 @@ from .delivery_rebalance import SegmentDeliveryState, plan_delivery_rebalance
 from .campaign_conflicts import CampaignEnrollment, resolve_campaign_conflicts
 from .operator_journey import RetentionOperatorJourney, rehearse_retention_journeys
 from .operator_inbox import build_retention_operator_inbox
+from .retention_value_plan import RetentionValueCandidate, plan_retention_value
 from .operations import DEFAULT_PLAYBOOKS, RiskBand, RiskPolicy, portfolio_summary, priority_customers
 from .retention_store import RetentionTaskStore
 
@@ -166,6 +167,27 @@ class RetentionUsabilityRehearsalInput(BaseModel):
 
 class RetentionOperatorInboxInput(RetentionUsabilityRehearsalInput):
     visible_limit: int = Field(default=15, ge=1, le=25)
+
+
+class RetentionValueCandidateInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    customer_key: str = Field(min_length=1, max_length=128)
+    risk_score: float = Field(ge=0, le=1)
+    expected_uplift: float = Field(ge=0, le=1)
+    uplift_uncertainty: float = Field(ge=0, le=1)
+    customer_value: float = Field(ge=0)
+    offer_cost: float = Field(ge=0)
+    contact_allowed: bool
+    channel: str = Field(min_length=1, max_length=40)
+
+
+class RetentionValuePlanInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    campaign_id: str = Field(min_length=1, max_length=120)
+    candidates: list[RetentionValueCandidateInput] = Field(min_length=1, max_length=5000)
+    campaign_budget: float = Field(ge=0)
+    maximum_offers: int = Field(ge=1, le=5000)
+    minimum_adjusted_uplift: float = Field(default=0.02, ge=0, le=1)
 
 
 class RetentionTaskStatusUpdate(BaseModel):
@@ -635,6 +657,16 @@ def create_app(
         return build_retention_operator_inbox(
             [RetentionOperatorJourney(**item.model_dump()) for item in payload.journeys],
             visible_limit=payload.visible_limit,
+        )
+
+    @app.post("/v4/retention/campaigns/value-plan")
+    def retention_campaign_value_plan(payload: RetentionValuePlanInput) -> dict[str, Any]:
+        return plan_retention_value(
+            payload.campaign_id,
+            [RetentionValueCandidate(**item.model_dump()) for item in payload.candidates],
+            campaign_budget=payload.campaign_budget,
+            maximum_offers=payload.maximum_offers,
+            minimum_adjusted_uplift=payload.minimum_adjusted_uplift,
         )
 
     @app.get("/v3/retention/experiment-plan")

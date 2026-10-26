@@ -515,6 +515,28 @@ class PredictionApiTests(unittest.TestCase):
         self.assertEqual("PRIORITY", response.json()["focus_items"][0]["status"])
         self.assertFalse(response.json()["automatic_contact_started"])
 
+    def test_v4_retention_value_plan_is_exposed(self) -> None:
+        with TestClient(create_app(self.model, self.predictions)) as client:
+            response = client.post("/v4/retention/campaigns/value-plan", json={
+                "campaign_id": "renewal-value",
+                "campaign_budget": 50,
+                "maximum_offers": 2,
+                "candidates": [
+                    {"customer_key": "c-1", "risk_score": 0.9,
+                     "expected_uplift": 0.2, "uplift_uncertainty": 0.03,
+                     "customer_value": 1000, "offer_cost": 30,
+                     "contact_allowed": True, "channel": "sms"},
+                    {"customer_key": "c-2", "risk_score": 0.8,
+                     "expected_uplift": 0.1, "uplift_uncertainty": 0.02,
+                     "customer_value": 500, "offer_cost": 30,
+                     "contact_allowed": False, "channel": "phone"},
+                ],
+            })
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("RETENTION_VALUE_PLAN_READY", response.json()["status"])
+        self.assertEqual(1, response.json()["selected_count"])
+        self.assertFalse(response.json()["automatic_contact_started"])
+
 
 if __name__ == "__main__":
     unittest.main()
