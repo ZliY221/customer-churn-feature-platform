@@ -471,6 +471,27 @@ class PredictionApiTests(unittest.TestCase):
         self.assertEqual(1, response.json()["conflict_count"])
         self.assertFalse(response.json()["automatic_contact_started"])
 
+    def test_v4_operator_rehearsal_covers_one_hundred_journeys(self) -> None:
+        journeys = []
+        for index in range(100):
+            journeys.append({
+                "journey_id": f"journey-{index + 1:03d}",
+                "customer_key": f"customer-{index + 1:03d}",
+                "consent_granted": index % 5 != 0,
+                "contact_conflict": index % 5 == 1,
+                "channel_available": index % 5 != 2,
+                "task_overdue": index % 5 == 3,
+                "outcome_matured": index % 5 == 4,
+            })
+        with TestClient(create_app(self.model, self.predictions)) as client:
+            response = client.post(
+                "/v4/retention/operator-rehearsal", json={"journeys": journeys}
+            )
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(100, response.json()["journey_count"])
+        self.assertEqual(0, response.json()["unresolved_count"])
+        self.assertFalse(response.json()["automatic_contact_started"])
+
 
 if __name__ == "__main__":
     unittest.main()

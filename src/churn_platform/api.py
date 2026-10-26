@@ -25,6 +25,7 @@ from .channel_routing import ChannelCandidate, ChannelCapacity, route_campaign_c
 from .campaign_delivery_audit import DeliveryAssignment, audit_campaign_delivery
 from .delivery_rebalance import SegmentDeliveryState, plan_delivery_rebalance
 from .campaign_conflicts import CampaignEnrollment, resolve_campaign_conflicts
+from .operator_journey import RetentionOperatorJourney, rehearse_retention_journeys
 from .operations import DEFAULT_PLAYBOOKS, RiskBand, RiskPolicy, portfolio_summary, priority_customers
 from .retention_store import RetentionTaskStore
 
@@ -144,6 +145,22 @@ class CampaignConflictInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     enrollments: list[CampaignEnrollmentInput] = Field(min_length=1, max_length=5000)
     cooldown_hours: int = Field(default=24, ge=1, le=168)
+
+
+class RetentionOperatorJourneyInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    journey_id: str = Field(min_length=1, max_length=80)
+    customer_key: str = Field(min_length=1, max_length=128)
+    consent_granted: bool
+    contact_conflict: bool
+    channel_available: bool
+    task_overdue: bool
+    outcome_matured: bool
+
+
+class RetentionUsabilityRehearsalInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    journeys: list[RetentionOperatorJourneyInput] = Field(min_length=100, max_length=100)
 
 
 class RetentionTaskStatusUpdate(BaseModel):
@@ -597,6 +614,14 @@ def create_app(
             [CampaignEnrollment(**item.model_dump()) for item in payload.enrollments],
             cooldown_hours=payload.cooldown_hours,
         )
+
+    @app.post("/v4/retention/operator-rehearsal")
+    def retention_operator_rehearsal(
+        payload: RetentionUsabilityRehearsalInput,
+    ) -> dict[str, Any]:
+        return rehearse_retention_journeys([
+            RetentionOperatorJourney(**item.model_dump()) for item in payload.journeys
+        ])
 
     @app.get("/v3/retention/experiment-plan")
     def retention_experiment_plan(
