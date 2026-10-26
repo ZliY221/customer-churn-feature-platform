@@ -26,6 +26,7 @@ from .campaign_delivery_audit import DeliveryAssignment, audit_campaign_delivery
 from .delivery_rebalance import SegmentDeliveryState, plan_delivery_rebalance
 from .campaign_conflicts import CampaignEnrollment, resolve_campaign_conflicts
 from .operator_journey import RetentionOperatorJourney, rehearse_retention_journeys
+from .operator_inbox import build_retention_operator_inbox
 from .operations import DEFAULT_PLAYBOOKS, RiskBand, RiskPolicy, portfolio_summary, priority_customers
 from .retention_store import RetentionTaskStore
 
@@ -161,6 +162,10 @@ class RetentionOperatorJourneyInput(BaseModel):
 class RetentionUsabilityRehearsalInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     journeys: list[RetentionOperatorJourneyInput] = Field(min_length=100, max_length=100)
+
+
+class RetentionOperatorInboxInput(RetentionUsabilityRehearsalInput):
+    visible_limit: int = Field(default=15, ge=1, le=25)
 
 
 class RetentionTaskStatusUpdate(BaseModel):
@@ -622,6 +627,15 @@ def create_app(
         return rehearse_retention_journeys([
             RetentionOperatorJourney(**item.model_dump()) for item in payload.journeys
         ])
+
+    @app.post("/v4/retention/operator-inbox")
+    def retention_operator_inbox(
+        payload: RetentionOperatorInboxInput,
+    ) -> dict[str, Any]:
+        return build_retention_operator_inbox(
+            [RetentionOperatorJourney(**item.model_dump()) for item in payload.journeys],
+            visible_limit=payload.visible_limit,
+        )
 
     @app.get("/v3/retention/experiment-plan")
     def retention_experiment_plan(

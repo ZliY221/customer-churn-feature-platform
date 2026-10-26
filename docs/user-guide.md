@@ -1,6 +1,6 @@
 # 用户使用指南
 
-适用版本：`v4.5.0`
+适用版本：`v4.6.0`
 
 本指南随项目版本同步更新，覆盖当前版本的数据链路、模型监控和留存运营流程。首次使用建议先阅读仓库首页的项目简介、业务流程和常用入口，再按本指南启动完整链路。
 
@@ -165,3 +165,9 @@ SLA 概览按配置的响应小时数区分正常、4 小时内临期和已超�
 ## v4.5.0 运营旅程演练
 
 调用 `POST /v4/retention/operator-rehearsal`，一次提交恰好 100 条客户运营旅程。每条记录包含客户授权、触达冲突、渠道可用性、任务是否超时以及结果观察窗口是否成熟。系统按照“客户授权 → 活动冲突 → 渠道 → 时效 → 结果复核”的顺序返回 `primary_action`、三步 `steps` 和中文 `message`，避免运营人员在多个模块之间反复查找入口。`unresolved_count=0` 表示所有模拟场景均获得明确路径；`automatic_contact_started=false` 表示演练不会发送消息或修改任务。
+
+## v4.6.0 合规运营收件箱
+
+调用 `POST /v4/retention/operator-inbox`，提交标准 100 条客户旅程，并通过 `visible_limit` 设置 1 至 25 条焦点任务。接口优先返回逾期任务，将未授权客户计入 `protected_count` 但不放入可操作列表。每条焦点任务包含预计耗时、恢复键和 `contact_allowed`，便于当班人员控制工作量并在联系前核对边界。
+
+响应中的 `remaining_actionable_count` 表示未展示但仍需处理的任务，`estimated_focus_minutes` 用于安排当班时间。`automatic_contact_started=false` 表示收件箱不会自动发送消息或改变任务状态。

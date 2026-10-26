@@ -492,6 +492,29 @@ class PredictionApiTests(unittest.TestCase):
         self.assertEqual(0, response.json()["unresolved_count"])
         self.assertFalse(response.json()["automatic_contact_started"])
 
+    def test_v4_operator_inbox_prioritises_a_bounded_focus_queue(self) -> None:
+        journeys = []
+        for index in range(100):
+            case = index % 6
+            journeys.append({
+                "journey_id": f"inbox-{index + 1:03d}",
+                "customer_key": f"customer-{index + 1:03d}",
+                "consent_granted": case != 0,
+                "contact_conflict": case == 1,
+                "channel_available": case != 2,
+                "task_overdue": case == 3,
+                "outcome_matured": case == 5,
+            })
+        with TestClient(create_app(self.model, self.predictions)) as client:
+            response = client.post("/v4/retention/operator-inbox", json={
+                "journeys": journeys, "visible_limit": 10,
+            })
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("RETENTION_INBOX_READY", response.json()["status"])
+        self.assertEqual(10, response.json()["visible_count"])
+        self.assertEqual("PRIORITY", response.json()["focus_items"][0]["status"])
+        self.assertFalse(response.json()["automatic_contact_started"])
+
 
 if __name__ == "__main__":
     unittest.main()
