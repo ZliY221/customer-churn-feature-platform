@@ -537,6 +537,21 @@ class PredictionApiTests(unittest.TestCase):
         self.assertEqual(1, response.json()["selected_count"])
         self.assertFalse(response.json()["automatic_contact_started"])
 
+    def test_v4_contact_fatigue_guard_is_exposed(self) -> None:
+        with TestClient(create_app(self.model, self.predictions)) as client:
+            response = client.post("/v4/retention/campaigns/fatigue-guard", json={
+                "candidates": [
+                    {"customer_key": "c-1", "contacts_last_7d": 2,
+                     "contacts_last_30d": 4, "hours_since_last_contact": 100,
+                     "negative_responses_last_30d": 0,
+                     "contact_allowed": True, "preferred_channel": "sms"}
+                ]
+            })
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("CONTACT_FATIGUE_ASSESSED", response.json()["status"])
+        self.assertEqual("COOLDOWN", response.json()["customers"][0]["status"])
+        self.assertFalse(response.json()["automatic_contact_started"])
+
 
 if __name__ == "__main__":
     unittest.main()

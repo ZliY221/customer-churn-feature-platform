@@ -28,6 +28,7 @@ from .campaign_conflicts import CampaignEnrollment, resolve_campaign_conflicts
 from .operator_journey import RetentionOperatorJourney, rehearse_retention_journeys
 from .operator_inbox import build_retention_operator_inbox
 from .retention_value_plan import RetentionValueCandidate, plan_retention_value
+from .contact_fatigue import ContactFatigueCandidate, assess_contact_fatigue
 from .operations import DEFAULT_PLAYBOOKS, RiskBand, RiskPolicy, portfolio_summary, priority_customers
 from .retention_store import RetentionTaskStore
 
@@ -188,6 +189,26 @@ class RetentionValuePlanInput(BaseModel):
     campaign_budget: float = Field(ge=0)
     maximum_offers: int = Field(ge=1, le=5000)
     minimum_adjusted_uplift: float = Field(default=0.02, ge=0, le=1)
+
+
+class ContactFatigueCandidateInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    customer_key: str = Field(min_length=1, max_length=128)
+    contacts_last_7d: int = Field(ge=0)
+    contacts_last_30d: int = Field(ge=0)
+    hours_since_last_contact: int = Field(ge=0)
+    negative_responses_last_30d: int = Field(ge=0)
+    contact_allowed: bool
+    preferred_channel: str = Field(min_length=1, max_length=40)
+
+
+class ContactFatigueInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    candidates: list[ContactFatigueCandidateInput] = Field(min_length=1, max_length=5000)
+    maximum_contacts_7d: int = Field(default=2, ge=1)
+    maximum_contacts_30d: int = Field(default=6, ge=1)
+    cooldown_hours: int = Field(default=48, ge=1, le=720)
+    negative_response_limit: int = Field(default=2, ge=1)
 
 
 class RetentionTaskStatusUpdate(BaseModel):
@@ -667,6 +688,16 @@ def create_app(
             campaign_budget=payload.campaign_budget,
             maximum_offers=payload.maximum_offers,
             minimum_adjusted_uplift=payload.minimum_adjusted_uplift,
+        )
+
+    @app.post("/v4/retention/campaigns/fatigue-guard")
+    def retention_campaign_fatigue_guard(payload: ContactFatigueInput) -> dict[str, Any]:
+        return assess_contact_fatigue(
+            [ContactFatigueCandidate(**item.model_dump()) for item in payload.candidates],
+            maximum_contacts_7d=payload.maximum_contacts_7d,
+            maximum_contacts_30d=payload.maximum_contacts_30d,
+            cooldown_hours=payload.cooldown_hours,
+            negative_response_limit=payload.negative_response_limit,
         )
 
     @app.get("/v3/retention/experiment-plan")
