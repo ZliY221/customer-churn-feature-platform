@@ -7,30 +7,29 @@
   <title>客户留存运营工作台</title>
   <link rel="stylesheet" href="/console/assets/styles.css">
 </head>
-<body>
+<body data-workspace-page="overview">
   <a class="skip-link" href="#main-content">跳到主要内容</a>
   <aside class="sidebar">
     <div class="brand"><span>C</span><div><strong>Customer Care</strong><small>客户成功工作台</small></div></div>
     <p class="sidebar-context">围绕风险客户组织每日跟进，从识别、分派到复盘保持同一条工作路径。</p>
     <nav aria-label="工作台导航">
-      <a class="active" href="#overview"><span>01</span>组合概览</a>
-      <a href="#priority"><span>02</span>优先队列</a>
-      <a href="#workloads"><span>03</span>责任视图</a>
-      <a href="#outcomes"><span>04</span>处置结果</a>
-      <a href="#tasks"><span>05</span>跟进任务</a>
+      <a class="active" data-workspace-link="overview" href="#overview"><span>01</span>客户概览</a>
+      <a data-workspace-link="priority" href="#priority"><span>02</span>风险队列</a>
+      <a data-workspace-link="tasks" href="#tasks"><span>03</span>协同任务</a>
+      <a data-workspace-link="outcomes" href="#outcomes"><span>04</span>效果复盘</a>
     </nav>
     <div class="lineage"><i></i><div><small>数据状态</small><strong id="lineage-status">正在连接</strong></div></div>
   </aside>
 
   <main id="main-content" tabindex="-1">
     <header id="overview">
-      <div><p class="overline">CUSTOMER SUCCESS DESK</p><h1>客户留存运营工作台</h1><p class="subtitle">先处理高风险客户，再跟进责任人与任务进度</p></div>
+      <div><p class="overline">CUSTOMER SUCCESS DESK</p><h1 id="workspace-title">客户留存运营工作台</h1><p class="subtitle" id="workspace-subtitle">先处理高风险客户，再跟进责任人与任务进度</p></div>
       <div class="live-controls"><span id="live-sync-status"><i></i><b>实时同步已开启</b></span><button class="outline" id="refresh-button">刷新数据</button></div>
     </header>
 
     <p class="error" id="error-banner" hidden></p>
 
-    <section class="journey-strip" aria-label="客户留存工作路径">
+    <section class="journey-strip page-stage" data-workspace-page-view="overview" aria-label="客户留存工作路径">
       <div><span>今日路径</span><strong>从风险到行动</strong></div>
       <ol>
         <li><b>1</b><span>识别风险<strong>查看组合分层</strong></span></li>
@@ -39,14 +38,14 @@
       </ol>
     </section>
 
-    <section class="metrics" aria-label="客户组合指标">
+    <section class="metrics page-stage" data-workspace-page-view="overview" aria-label="客户组合指标">
       <article><span>客户快照</span><strong id="customer-count">—</strong><small id="snapshot-time">等待加载</small></article>
       <article><span>预测流失客户</span><strong id="predicted-count">—</strong><small>按当前决策阈值</small></article>
       <article><span>平均流失概率</span><strong id="average-probability">—</strong><small>当前预测批次</small></article>
       <article><span>进行中任务</span><strong id="active-task-count">—</strong><small>待执行与处理中</small></article>
     </section>
 
-    <section class="workspace-grid">
+    <section class="workspace-grid page-stage" data-workspace-page-view="overview">
       <article class="panel risk-panel">
         <div class="panel-head"><div><p class="overline">RISK DISTRIBUTION</p><h2>风险分层</h2></div><span>客户数</span></div>
         <div class="risk-list" id="risk-list"></div>
@@ -63,17 +62,17 @@
       </article>
     </section>
 
-    <section class="panel" id="priority">
+    <section class="panel page-stage" data-workspace-page-view="priority" id="priority" hidden>
       <div class="panel-head table-heading"><div><p class="overline">PRIORITY QUEUE</p><h2>高风险客户优先队列</h2></div><select id="risk-filter" aria-label="风险等级筛选"><option value="">全部等级</option><option value="CRITICAL">极高风险</option><option value="HIGH">高风险</option><option value="WATCH">关注</option><option value="STABLE">稳定</option></select></div>
       <div class="table-scroll"><table><thead><tr><th>匿名客户</th><th>流失概率</th><th>风险等级</th><th>建议策略</th><th>操作</th></tr></thead><tbody id="priority-body"></tbody></table></div>
     </section>
 
-    <section class="panel" id="workloads">
+    <section class="panel page-stage" data-workspace-page-view="tasks" id="workloads" hidden>
       <div class="panel-head"><div><p class="overline">OWNER WORKLOAD</p><h2>负责人任务负载</h2></div><span id="workload-total">0 位负责人</span></div>
       <div class="workload-grid" id="workload-grid"><p class="empty-state">等待任务数据</p></div>
     </section>
 
-    <section class="panel outcome-panel" id="outcomes">
+    <section class="panel outcome-panel page-stage" data-workspace-page-view="outcomes" id="outcomes" hidden>
       <div class="panel-head"><div><p class="overline">OUTCOME OBSERVATION</p><h2>留存处置结果</h2></div><span>按已登记任务统计</span></div>
       <div class="outcome-summary-grid">
         <article><span>已登记结果</span><strong id="outcome-recorded">0</strong><small>形成处置记录的任务</small></article>
@@ -83,7 +82,7 @@
       </div>
     </section>
 
-    <section class="panel" id="tasks">
+    <section class="panel page-stage" data-workspace-page-view="tasks" id="tasks" hidden>
       <div class="panel-head table-heading"><div><p class="overline">ACTION TRACKING</p><h2>运营任务</h2></div><div class="task-filters"><select id="task-risk-filter" aria-label="按任务风险筛选"><option value="">全部风险</option><option value="CRITICAL">极高风险</option><option value="HIGH">高风险</option><option value="WATCH">关注</option><option value="STABLE">稳定</option></select><select id="task-owner-filter" aria-label="按负责人筛选"><option value="">全部负责人</option></select><span id="task-total">0 条 · 0 条变更记录</span></div></div>
       <div class="bulk-task-actions"><span id="selected-task-count">已选择 0 条任务</span><input id="bulk-task-owner" maxlength="80" placeholder="批量分派负责人" aria-label="批量分派负责人"><input id="bulk-task-note" maxlength="200" placeholder="操作备注（可选）" aria-label="批量操作备注"><button id="bulk-assign-owner" type="button" disabled>批量分派</button><button id="bulk-assign-start" type="button" disabled>分派并开始</button><button class="outline" id="bulk-start-tasks" type="button" disabled>批量开始</button><button id="bulk-complete-tasks" type="button" disabled>批量完成</button><small id="bulk-action-result" role="status"></small></div>
       <div class="task-board" id="task-board"></div>

@@ -100,6 +100,10 @@ class PredictionApiTests(unittest.TestCase):
         self.assertIn("留存处置结果", console.text)
         self.assertIn('id="outcome-dialog"', console.text)
         self.assertIn('class="skip-link"', console.text)
+        for page in ("overview", "priority", "tasks", "outcomes"):
+            self.assertIn(f'data-workspace-link="{page}"', console.text)
+            self.assertIn(f'data-workspace-page-view="{page}"', console.text)
+        self.assertIn('data-workspace-page="overview"', console.text)
         self.assertEqual(200, styles.status_code)
         self.assertIn("--coral: #d96c55", styles.text)
         self.assertIn("prefers-reduced-motion", styles.text)

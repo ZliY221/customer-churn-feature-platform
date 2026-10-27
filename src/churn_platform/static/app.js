@@ -2,6 +2,36 @@ const $ = selector => document.querySelector(selector)
 const state = { priority: [], tasks: [], outcomes: new Map(), selectedTasks: new Set(), eventCursor: 0, polling: false }
 const bandNames = { CRITICAL: '极高风险', HIGH: '高风险', WATCH: '关注', STABLE: '稳定' }
 const statusNames = { OPEN: '待执行', IN_PROGRESS: '处理中', COMPLETED: '已完成', DISMISSED: '已关闭' }
+const workspacePages = {
+  overview: ['客户留存运营工作台', '先看组合健康度，再进入需要处理的客户与任务'],
+  priority: ['高风险客户队列', '按流失概率和风险等级安排当天的联系顺序'],
+  tasks: ['留存协同任务', '集中完成负责人分派、批量推进和任务交接'],
+  outcomes: ['留存效果复盘', '对照联系结果与成熟观察窗口复核策略效果'],
+}
+
+function activateWorkspacePage(page, updateHash = true) {
+  const selected = workspacePages[page] ? page : 'overview'
+  document.body.dataset.workspacePage = selected
+  document.querySelectorAll('[data-workspace-page-view]').forEach(view => {
+    view.hidden = view.dataset.workspacePageView !== selected
+  })
+  document.querySelectorAll('[data-workspace-link]').forEach(link => {
+    const active = link.dataset.workspaceLink === selected
+    link.classList.toggle('active', active)
+    link.setAttribute('aria-current', active ? 'page' : 'false')
+  })
+  $('#workspace-title').textContent = workspacePages[selected][0]
+  $('#workspace-subtitle').textContent = workspacePages[selected][1]
+  if (updateHash) history.replaceState(null, '', `#${selected}`)
+  $('#main-content').focus({ preventScroll: true })
+}
+
+document.querySelectorAll('[data-workspace-link]').forEach(link => {
+  link.addEventListener('click', event => {
+    event.preventDefault()
+    activateWorkspacePage(link.dataset.workspaceLink)
+  })
+})
 
 async function request(path, options) {
   const response = await fetch(path, options)
@@ -322,6 +352,7 @@ async function pollRetentionEvents() {
   }
 }
 
+activateWorkspacePage(location.hash.slice(1), false)
 load()
 setInterval(pollRetentionEvents, 2000)
 
