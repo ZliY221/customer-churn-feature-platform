@@ -59,6 +59,7 @@ class PredictionApiTests(unittest.TestCase):
         ) as client:
             console = client.get("/console")
             styles = client.get("/console/assets/styles.css")
+            script = client.get("/console/assets/app.js")
             summary = client.get("/v1/portfolio/summary")
             priority = client.get("/v1/portfolio/priority", params={"limit": 5})
             prediction = priority.json()["items"][0]
@@ -104,6 +105,9 @@ class PredictionApiTests(unittest.TestCase):
             self.assertIn(f'data-workspace-link="{page}"', console.text)
             self.assertIn(f'data-workspace-page-view="{page}"', console.text)
         self.assertIn('data-workspace-page="overview"', console.text)
+        self.assertIn('aria-busy', console.text + script.text)
+        self.assertIn("churn-workspace-page", script.text)
+        self.assertIn("schedulePoll", script.text)
         self.assertEqual(200, styles.status_code)
         self.assertIn("--coral: #d96c55", styles.text)
         self.assertIn("prefers-reduced-motion", styles.text)

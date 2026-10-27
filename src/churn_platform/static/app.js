@@ -1,5 +1,5 @@
 const $ = selector => document.querySelector(selector)
-const state = { priority: [], tasks: [], outcomes: new Map(), selectedTasks: new Set(), eventCursor: 0, polling: false }
+const state = { priority: [], tasks: [], outcomes: new Map(), selectedTasks: new Set(), eventCursor: 0, polling: false, loadPromise: null, reloadQueued: false, pollTimer: null }
 const bandNames = { CRITICAL: '极高风险', HIGH: '高风险', WATCH: '关注', STABLE: '稳定' }
 const statusNames = { OPEN: '待执行', IN_PROGRESS: '处理中', COMPLETED: '已完成', DISMISSED: '已关闭' }
 const workspacePages = {
@@ -23,13 +23,21 @@ function activateWorkspacePage(page, updateHash = true) {
   $('#workspace-title').textContent = workspacePages[selected][0]
   $('#workspace-subtitle').textContent = workspacePages[selected][1]
   if (updateHash) history.replaceState(null, '', `#${selected}`)
-  $('#main-content').focus({ preventScroll: true })
+  try { localStorage.setItem('churn-workspace-page', selected) } catch (_) {}
+  if (updateHash) $('#main-content').focus()
 }
 
-document.querySelectorAll('[data-workspace-link]').forEach(link => {
+const workspaceLinks = [...document.querySelectorAll('[data-workspace-link]')]
+workspaceLinks.forEach((link, index) => {
   link.addEventListener('click', event => {
     event.preventDefault()
     activateWorkspacePage(link.dataset.workspaceLink)
+  })
+  link.addEventListener('keydown', event => {
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
+    event.preventDefault()
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? workspaceLinks.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + workspaceLinks.length) % workspaceLinks.length
+    workspaceLinks[next].focus()
   })
 })
 
@@ -103,7 +111,7 @@ function renderWorkloads(response) {
     </article>`).join('') : '<p class="empty-state">当前没有活跃任务</p>'
 }
 
-async function load() {
+async function performLoad() {
   try {
     const band = $('#risk-filter').value
     const suffix = band ? `&risk_band=${band}` : ''
@@ -146,6 +154,27 @@ async function load() {
   } catch (error) {
     $('#error-banner').textContent = error.message
     $('#error-banner').hidden = false
+  }
+}
+
+async function load() {
+  if (state.loadPromise) {
+    state.reloadQueued = true
+    return state.loadPromise
+  }
+  document.body.classList.add('is-refreshing')
+  $('#main-content').setAttribute('aria-busy', 'true')
+  state.loadPromise = performLoad()
+  try {
+    await state.loadPromise
+  } finally {
+    state.loadPromise = null
+    document.body.classList.remove('is-refreshing')
+    $('#main-content').setAttribute('aria-busy', 'false')
+    if (state.reloadQueued) {
+      state.reloadQueued = false
+      return load()
+    }
   }
 }
 
@@ -352,7 +381,22 @@ async function pollRetentionEvents() {
   }
 }
 
-activateWorkspacePage(location.hash.slice(1), false)
+function schedulePoll(delay = document.hidden ? 15000 : 2000) {
+  if (state.pollTimer) clearTimeout(state.pollTimer)
+  state.pollTimer = setTimeout(async () => {
+    await pollRetentionEvents()
+    schedulePoll()
+  }, delay)
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) schedulePoll(15000)
+  else { void load(); schedulePoll(500) }
+})
+
+let storedPage = ''
+try { storedPage = localStorage.getItem('churn-workspace-page') || '' } catch (_) {}
+activateWorkspacePage(location.hash.slice(1) || storedPage, false)
 load()
-setInterval(pollRetentionEvents, 2000)
+schedulePoll()
 

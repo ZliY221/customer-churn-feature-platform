@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/ci.yml)
 [![Portable smoke](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/portable-smoke.yml/badge.svg)](https://github.com/ZliY221/customer-churn-feature-platform/actions/workflows/portable-smoke.yml)
-![Version](https://img.shields.io/badge/version-v4.9.0-5b3f78)
+![Version](https://img.shields.io/badge/version-v4.10.0-5b3f78)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776ab)
 ![API](https://img.shields.io/badge/API-FastAPI-05998b)
 
@@ -147,4 +147,4 @@ docs/                    架构、模型和操作文档
 
 ## 版本与维护
 
-当前版本为 `v4.9.0`。客户留存控制台升级为客户概览、风险队列、协同任务和效果复盘四个操作页面，页面背景与信息布局随工作目标切换，实时轮询和原有任务闭环保持不变。每次发布同步维护[用户使用指南](docs/user-guide.md)、[版本记录](CHANGELOG.md)和[版本摘要](VERSION_LOG.md)。
+当前版本为 `v4.10.0`。客户留存控制台合并重复刷新，并根据页面可见状态自动调整轮询频率；页面位置与键盘导航状态可连续恢复。每次发布同步维护[用户使用指南](docs/user-guide.md)、[版本记录](CHANGELOG.md)和[版本摘要](VERSION_LOG.md)。

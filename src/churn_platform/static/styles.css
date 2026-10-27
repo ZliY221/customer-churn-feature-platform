@@ -30,8 +30,10 @@ body[data-workspace-page="overview"] { background: radial-gradient(circle at 82%
 body[data-workspace-page="priority"] { background: radial-gradient(circle at 75% 18%, rgba(217, 108, 85, .18), transparent 30%), linear-gradient(135deg, #fbf0ec, #f5f2f7); }
 body[data-workspace-page="tasks"] { background: linear-gradient(rgba(91, 63, 120, .045) 1px, transparent 1px), linear-gradient(90deg, rgba(91, 63, 120, .045) 1px, transparent 1px), #f4f2f7; background-size: 30px 30px; }
 body[data-workspace-page="outcomes"] { background: radial-gradient(circle at 20% 85%, rgba(33, 140, 130, .17), transparent 32%), linear-gradient(145deg, #eef7f4, #fbf7ef); }
+body::before { content: ""; position: fixed; z-index: 40; inset: 0 auto auto 248px; width: 0; height: 3px; background: linear-gradient(90deg, var(--coral), var(--gold), var(--teal)); opacity: 0; transition: width .25s ease, opacity .15s ease; }
+body.is-refreshing::before { width: calc(100% - 248px); opacity: 1; }
 [hidden] { display: none !important; }
-.page-stage { animation: workspace-in .24s ease both; }
+.page-stage { animation: workspace-in .2s ease both; contain: layout paint; }
 @keyframes workspace-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 button, input, select { font: inherit; }
 button, select { cursor: pointer; }
@@ -280,6 +282,8 @@ form > label { display: grid; gap: 7px; padding: 8px 24px; color: #5e5667; font-
   .journey-strip { grid-template-columns: 1fr; }
 }
 @media (max-width: 760px) {
+  body::before { left: 0; }
+  body.is-refreshing::before { width: 100%; }
   .sidebar { position: static; width: auto; height: auto; padding: 16px 18px; flex-direction: row; align-items: center; gap: 18px; }
   .sidebar::after, .sidebar-context, .lineage { display: none; }
   .sidebar nav { display: flex; margin: 0 0 0 auto; }
