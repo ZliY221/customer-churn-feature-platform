@@ -39,6 +39,22 @@ class PredictionApiTests(unittest.TestCase):
         self.assertEqual(10, registry.json()["feature_count"])
         self.assertEqual(64, len(registry.json()["registry_sha256"]))
 
+    def test_v4_task_escalation_plan_is_exposed(self) -> None:
+        with TestClient(create_app(self.model, self.predictions, task_database_path=self.task_database)) as client:
+            response = client.post("/v4/retention/tasks/escalation-plan", json={
+                "now": "2026-10-28T10:00:00+08:00",
+                "tasks": [{
+                    "task_id": "task-overdue", "risk_band": "CRITICAL", "status": "OPEN",
+                    "owner": "retention-team", "created_at": "2026-10-27T08:00:00+08:00",
+                    "due_at": "2026-10-28T09:00:00+08:00",
+                    "last_activity_at": "2026-10-28T08:00:00+08:00",
+                }],
+            })
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("SLA_ATTENTION_REQUIRED", response.json()["status"])
+        self.assertEqual("ESCALATE_OVERDUE", response.json()["focus_items"][0]["recommended_action"])
+        self.assertFalse(response.json()["automatic_task_changes_started"])
+
     def test_prediction_queries_are_bounded_and_not_found_is_explicit(self) -> None:
         with TestClient(create_app(self.model, self.predictions, task_database_path=self.task_database)) as client:
             page = client.get("/v1/predictions", params={"limit": 5, "offset": 2})

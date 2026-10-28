@@ -29,6 +29,7 @@ from .operator_journey import RetentionOperatorJourney, rehearse_retention_journ
 from .operator_inbox import build_retention_operator_inbox
 from .retention_value_plan import RetentionValueCandidate, plan_retention_value
 from .contact_fatigue import ContactFatigueCandidate, assess_contact_fatigue
+from .task_escalation import RetentionTaskSla, plan_task_escalations
 from .operations import DEFAULT_PLAYBOOKS, RiskBand, RiskPolicy, portfolio_summary, priority_customers
 from .retention_store import RetentionTaskStore
 
@@ -209,6 +210,26 @@ class ContactFatigueInput(BaseModel):
     maximum_contacts_30d: int = Field(default=6, ge=1)
     cooldown_hours: int = Field(default=48, ge=1, le=720)
     negative_response_limit: int = Field(default=2, ge=1)
+
+
+class RetentionTaskSlaInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    task_id: str = Field(min_length=1, max_length=128)
+    risk_band: Literal["CRITICAL", "HIGH", "WATCH", "STABLE"]
+    status: Literal["OPEN", "IN_PROGRESS", "COMPLETED", "DISMISSED"]
+    owner: str | None = Field(default=None, max_length=80)
+    created_at: datetime
+    due_at: datetime
+    last_activity_at: datetime
+
+
+class RetentionTaskEscalationInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    now: datetime
+    tasks: list[RetentionTaskSlaInput] = Field(min_length=1, max_length=5000)
+    due_soon_minutes: int = Field(default=120, ge=1, le=10080)
+    inactivity_minutes: int = Field(default=240, ge=1, le=43200)
+    focus_limit: int = Field(default=20, ge=1, le=100)
 
 
 class RetentionTaskStatusUpdate(BaseModel):
@@ -698,6 +719,18 @@ def create_app(
             maximum_contacts_30d=payload.maximum_contacts_30d,
             cooldown_hours=payload.cooldown_hours,
             negative_response_limit=payload.negative_response_limit,
+        )
+
+    @app.post("/v4/retention/tasks/escalation-plan")
+    def retention_task_escalation_plan(
+        payload: RetentionTaskEscalationInput,
+    ) -> dict[str, Any]:
+        return plan_task_escalations(
+            [RetentionTaskSla(**item.model_dump()) for item in payload.tasks],
+            now=payload.now,
+            due_soon_minutes=payload.due_soon_minutes,
+            inactivity_minutes=payload.inactivity_minutes,
+            focus_limit=payload.focus_limit,
         )
 
     @app.get("/v3/retention/experiment-plan")
